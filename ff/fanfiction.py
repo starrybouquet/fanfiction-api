@@ -87,7 +87,38 @@ def _visible_filter(element):
 
 
 class Story(object):
-    def __init__(self, url, opener=urllib2.urlopen):
+    def __init__(self, url=None, id=None):
+        """ A story on fanfiction.net
+
+        If both url, and id are provided, url is used.
+
+        :type id: int
+        :param url: The url of the story.
+        :param id: The story id of the story.
+
+        Attributes:
+            id  (int):              The story id.
+            chapter_count (int);    The number of chapters.
+            word_count (int):       The number of words.
+            author_id (int):        The user id of the author.
+            title (str):            The title of the story.
+            date_published (date):  The date the story was published.
+            date_updated (date):    The date of the most recent update.
+            author (str):           The name of the author.
+            rated (str):            The story rating.
+            language (str):         The story language.
+            genre (str):            The genre(s) of the story.
+            characters (str):       The character(s) of the story.
+            reviews (int):          The number of reviews of the story.
+            status (bool):          True if the story is complete, else False.
+        """
+
+        if url is None:
+            if id is None:
+                print "There must be a url or an id."
+            else:
+                url = _STORY_URL_TEMPLATE % int(id)
+
         source = opener(url).read()
         # Easily parsable and directly contained in the JavaScript, lets hope
         # that doesn't change or it turns into something like below
@@ -191,7 +222,31 @@ class Story(object):
 
 
 class Chapter(object):
-    def __init__(self, url, opener=urllib2.urlopen):
+    def __init__(self, url=None, story_id=None, chapter=None):
+        """ A single chapter in a fanfiction story, on fanfiction.net
+
+        :param url: The url of the chapter.
+        :param story_id: The story id of the story of the chapter.
+        :param chapter: The chapter number of the story.
+
+        Attributes:
+            story_id    (int):  Story ID
+            number      (int):  Chapter number
+            story_text_id (int):    ?
+            title       (str):  Title of the chapter, or title of the story.
+            raw_text    (str):  The raw HTML of the story.
+            text_list   List(str):  List of unicode strings for each paragraph.
+            text        (str):  Visible text of the story.
+        """
+
+        if url is None:
+            if story_id is None:
+                print 'A URL or story id must be entered.'
+            elif chapter is None:
+                print 'Both a stroy id and chapter number must be provided'
+            elif story_id and chapter:
+                url = _CHAPTER_URL_TEMPLATE % (story_id, chapter)
+
         source = opener(url).read()
         self.story_id = _parse_integer(_STORYID_REGEX, source)
         self.number = _parse_integer(_CHAPTER_REGEX, source)
@@ -216,4 +271,54 @@ class Chapter(object):
         for hr in soup('hr'):
             del hr['size']
             del hr['noshade']
-        self.text = soup.decode()
+
+        self.raw_text = soup.decode()
+
+        texts = soup.findAll(text=True)
+        self.text_list = filter(_visible_filter, texts)
+        self.text = '\n'.join(self.text_list)
+
+
+class User(object):
+    def __init__(self, url=None, id=None):
+
+        if url is None:
+            if id is None:
+                print "Either url or id must be specified."
+            else:
+                self.userid = id
+                url = _USERID_URL_TEMPLATE % id
+        else:
+            self.userid = _parse_integer(_USERID_URL_EXTRACT, url)
+
+        source = opener(url).read()
+        self._soup = bs4.BeautifulSoup(source, 'html5lib')
+        self.url = url
+        self.username = _parse_string(_USERNAME_REGEX, source)
+        self.story_count = _parse_integer(_USER_STORY_COUNT_REGEX, source)
+        self.favourite_count = _parse_integer(_USER_FAVOURITE_COUNT_REGEX, source)
+        self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
+
+    def get_stories(self):
+        """
+        Get the stories written by this author.
+        :return: A generator for stories by this author.
+        """
+        xml_page_source = opener(root + '/atom/u/%d/' % self.userid).read()
+        xml_soup = bs4.BeautifulSoup(xml_page_source)
+        entries = xml_soup.findAll('link', attrs={'rel': 'alternate'})
+        for entry in entries:
+            story_url = entry.get('href')
+            yield Story(story_url)
+
+    def get_favourite_stories(self):
+        """
+        Get the favourite stories of this author.
+        :return: A Story generator for the favourite stories for this author.
+        """
+        favourite_stories = self._soup.findAll('div', {'class': 'favstories'})
+        for story in favourite_stories:
+            link = story.find('a', {'class': 'stitle'}).get('href')
+            link = root + link
+            yield Story(link)
+
