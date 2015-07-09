@@ -195,7 +195,7 @@ class Story(object):
         :return: A generator to fetch chapter objects.
         """
         try:
-            for number in range(1, self.number_chapters + 1):
+            for number in range(1, self.chapter_count + 1):
                 yield Chapter(story_id=self.id, chapter=number)
         except KeyboardInterrupt:
             print "!-- Stopped fetching chapters"
@@ -277,7 +277,6 @@ class Chapter(object):
         texts = soup.findAll(text=True)
         self.text_list = filter(_visible_filter, texts)
         self.text = '\n'.join(self.text_list)
-
 
 class User(object):
     def __init__(self, url=None, id=None):
