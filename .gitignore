@@ -1,2 +1,4 @@
 .idea/
 *.pyc
+test.py
+captcha.jpg
