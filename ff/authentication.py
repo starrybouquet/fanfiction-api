@@ -9,17 +9,20 @@ root = 'http://www.fanfiction.net'
 _CAPTCHA_REGEX = r"img_src:\s*'(\/cap\.jpg\?cid=(\w+)&a=(\w+))'"
 _CAPTCHAID_REGEX = r"captcha_id:\s*'(\w+)'"
 
+
 def _get_config(path=None):
     config = yaml.load(open('config.yaml', 'r').read())
     return config
 
+
 def _solve_captcha(captcha_url):
-        urllib.urlretrieve(captcha_url, 'captcha.jpg')
-        cap_viewer = subprocess.Popen(['display', '-monochrome', 'captcha.jpg'])
-        solution = raw_input('Solve CAPTCHA: ')
-        cap_viewer.terminate()
-        cap_viewer.kill()
-        return solution
+    urllib.urlretrieve(captcha_url, 'captcha.jpg')
+    cap_viewer = subprocess.Popen(['display', '-monochrome', 'captcha.jpg'])
+    solution = raw_input('Solve CAPTCHA: ')
+    cap_viewer.terminate()
+    cap_viewer.kill()
+    return solution
+
 
 class FanfictionLogin(object):
     def __init__(self, config_file=None):
@@ -38,7 +41,7 @@ class FanfictionLogin(object):
                                    'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.1.4322)')]
         self.login()
 
-    def login(self):
+    def login(self):  # Not working. Cannot get past login form.
         """
         Handle login
         :return: boolean, True is login was a success, otherwise False.
