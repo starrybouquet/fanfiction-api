@@ -1,6 +1,6 @@
 __author__ = 'samson'
 
-import ff.fanfiction as fan
+import ff.fiction as fan
 
 url = 'https://www.fanfiction.net/s/10541297/1/Harry-Potter-and-the-Riders-of-the-Apocalypse'
 
