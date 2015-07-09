@@ -24,7 +24,7 @@ _DATEU_REGEX = r"Updated:\s*<span.+?='(\d+)'>"
 _USERID_REGEX = r"var\s+userid\s*=\s*(\d+);"
 _AUTHOR_REGEX = r"href='/u/\d+/(.+?)'"
 _USERID_URL_EXTRACT = r".*/u/(\d+)"
-_USERNAME_REGEX = r"href=\"//www.fanfiction.net/u/801855/(.+)\">"
+_USERNAME_REGEX = r"<link rel=\"canonical\" href=\"//www.fanfiction.net/u/\d+/(.+)\">"
 _USER_STORY_COUNT_REGEX = r"My Stories\s*<span class=badge>(\d+)<"
 _USER_FAVOURITE_COUNT_REGEX = r"Favorite Stories\s*<span class=badge>(\d+)<"
 _USER_FAVOURITE_AUTHOR_COUNT_REGEX = r"Favorite Authors\s*<span class=badge>(\d+)<"
@@ -297,8 +297,10 @@ class User(object):
         self.username = _parse_string(_USERNAME_REGEX, source)
         self.story_count = _parse_integer(_USER_STORY_COUNT_REGEX, source)
         self.favourite_count = _parse_integer(_USER_FAVOURITE_COUNT_REGEX, source)
-        self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
-
+        try:
+            self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
+        except AttributeError:
+            self.favourite_author_count = None
     def get_stories(self):
         """
         Get the stories written by this author.
@@ -321,4 +323,17 @@ class User(object):
             link = story.find('a', {'class': 'stitle'}).get('href')
             link = root + link
             yield Story(link)
+
+    def get_favourite_authors(self):
+        """
+        :return: User generator for the favourite authors of this user.
+        """
+        tables = self._soup.findAll('table')
+        table = tables[-1]
+        author_tags = table.findAll('a', href=re.compile(r".*/u/(\d+)/.*"))
+        for author_tag in author_tags:
+            author_url = author_tag.get('href')
+            author_url = root + author_url
+            yield User(author_url)
+
 
