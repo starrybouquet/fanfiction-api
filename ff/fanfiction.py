@@ -1,11 +1,17 @@
-import re, urllib2, bs4
+import re, urllib2, bs4, unicodedata
 from datetime import timedelta, date
 
+# Constants
+opener = urllib2.urlopen
+root = 'http://www.fanfiction.net'
+
+# REGEX MATCHES
+
+# STORY REGEX
 _STORYID_REGEX = r"var\s+storyid\s*=\s*(\d+);"
 _CHAPTER_REGEX = r"var\s+chapter\s*=\s*(\d+);"
 _CHAPTERS_REGEX = r"Chapters:\s*(\d+)\s*"
 _WORDS_REGEX = r"Words:\s*([\d,]+)\s*"
-_USERID_REGEX = r"var\s+userid\s*=\s*(\d+);"
 _TITLE_REGEX = r"var\s+title\s*=\s*'(.+)';"
 _TITLE_T_REGEX = r"var\s+title_t\s*=\s*'(.+)';"
 _SUMMARY_REGEX = r"var\s+summary\s*=\s*'(.+)';"
@@ -13,7 +19,15 @@ _CATEGORYID_REGEX = r"var\s+categoryid\s*=\s*(\d+);"
 _CAT_TITLE_REGEX = r"var\s+cat_title\s*=\s*'(.+)';"
 _DATEP_REGEX = r"Published:\s*<span.+?='(\d+)'>"
 _DATEU_REGEX = r"Updated:\s*<span.+?='(\d+)'>"
+
+# USER REGEX
+_USERID_REGEX = r"var\s+userid\s*=\s*(\d+);"
 _AUTHOR_REGEX = r"href='/u/\d+/(.+?)'"
+_USERID_URL_EXTRACT = r".*/u/(\d+)"
+_USERNAME_REGEX = r"href=\"//www.fanfiction.net/u/801855/(.+)\">"
+_USER_STORY_COUNT_REGEX = r"My Stories\s*<span class=badge>(\d+)<"
+_USER_FAVOURITE_COUNT_REGEX = r"Favorite Stories\s*<span class=badge>(\d+)<"
+_USER_FAVOURITE_AUTHOR_COUNT_REGEX = r"Favorite Authors\s*<span class=badge>(\d+)<"
 
 # Useful for generating a review URL later on
 _STORYTEXTID_REGEX = r"var\s+storytextid\s*=\s*storytextid=(\d+);"
@@ -31,9 +45,14 @@ _GENRES = [
     'Fantasy', 'Spiritual', 'Tragedy', 'Western', 'Crime', 'Family', 'Hurt',
     'Comfort', 'Friendship'
 ]
+
+# TEMPLATES
+_STORY_URL_TEMPLATE = 'http;//www.fanfiction.net/s/%d'
 _CHAPTER_URL_TEMPLATE = 'http://www.fanfiction.net/s/%d/%d'
+_USERID_URL_TEMPLATE = 'http://www.fanfiction.net/u/%d'
 
 _DATE_COMPARISON = date(1970, 1, 1)
+
 
 def _parse_string(regex, source):
     """Returns first group of matched regular expression as string."""
@@ -46,6 +65,7 @@ def _parse_integer(regex, source):
     match = match.replace(',', '')
     return int(match)
 
+
 def _parse_date(regex, source):
     xutime = _parse_integer(regex, source)
     delta = timedelta(seconds=xutime)
@@ -57,29 +77,44 @@ def _unescape_javascript_string(string_):
     return string_.replace("\\'", "'").replace('\\"', '"').replace('\\\\', '\\')
 
 
+def _visible_filter(element):
+    if element.parent.name in ['style', 'script', '[document]', 'head', 'title']:
+        return False
+    element = unicodedata.normalize('NFKD', element).encode('ascii', 'ignore')
+    if re.match(r'<!--.*-->', str(element)):
+        return False
+    return True
+
+
 class Story(object):
     def __init__(self, url, opener=urllib2.urlopen):
         source = opener(url).read()
         # Easily parsable and directly contained in the JavaScript, lets hope
         # that doesn't change or it turns into something like below
         self.id = _parse_integer(_STORYID_REGEX, source)
-        self.number_chapters = _parse_integer(_CHAPTERS_REGEX, source)
-        self.number_words = _parse_integer(_WORDS_REGEX, source)
+        try:
+            # if there is only 1 chapter
+            self.date_updated = _parse_date(_DATEU_REGEX, source)
+            self.chapter_count = _parse_integer(_CHAPTERS_REGEX, source)
+        except AttributeError:
+            self.chapter_count = 1
+            self.date_updated = None
+        self.word_count = _parse_integer(_WORDS_REGEX, source)
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
-        #self.summary = _unescape_javascript_string(_parse_string(_SUMMARY_REGEX, source))
-        #self.category_id = _parse_integer(_CATEGORYID_REGEX, source)
-        #self.category = _unescape_javascript_string(_parse_string(_CAT_TITLE_REGEX, source))
+        # self.summary = _unescape_javascript_string(_parse_string(_SUMMARY_REGEX, source)) # Currently tricky to find
+        # self.category_id = _parse_integer(_CATEGORYID_REGEX, source)
+        # self.category = _unescape_javascript_string(_parse_string(_CAT_TITLE_REGEX, source))
         self.date_published = _parse_date(_DATEP_REGEX, source)
-        self.date_updated = _parse_date(_DATEU_REGEX, source)
         self.author = _unescape_javascript_string(_parse_string(_AUTHOR_REGEX, source))
 
         # Tokens of information that aren't directly contained in the
         # JavaScript, need to manually parse and filter those
-        tokens = [token.strip() for token in re.sub(_HTML_TAG_REGEX, '', _parse_string(_NON_JAVASCRIPT_REGEX, source)).split('-')]
+        tokens = [token.strip() for token in
+                  re.sub(_HTML_TAG_REGEX, '', _parse_string(_NON_JAVASCRIPT_REGEX, source)).split('-')]
 
         # Both tokens are constant and always available
-        self.rated = tokens[0]
+        self.rated = tokens[0].replace('Fiction', '').strip()
         self.language = tokens[1]
 
         # After those the remaining tokens are uninteresting and looking for
@@ -118,15 +153,37 @@ class Story(object):
 
         # Status is directly contained in the tokens as a single-string
         if 'Complete' in tokens:
-            self.status = 'Complete'
+            self.status = True
         else:
             # FanFiction.Net calls it "In-Progress", I'll just go with that
-            self.status = 'In-Progress'
+            self.status = False
 
-    def get_chapters(self, opener=urllib2.urlopen):
-        for number in range(1, self.number_chapters + 1):
-            url = _CHAPTER_URL_TEMPLATE % (self.id, number)
-            yield Chapter(url, opener)
+    def get_chapters(self):
+        """
+        A generator for all chapters in the story.
+        :return: A generator to fetch chapter objects.
+        """
+        try:
+            for number in range(1, self.number_chapters + 1):
+                yield Chapter(story_id=self.id, chapter=number)
+        except KeyboardInterrupt:
+            print "!-- Stopped fetching chapters"
+
+    def get_user(self):
+        """
+        :return: The user object of the author of the story.
+        """
+        return User(id=self.author_id)
+
+    def print_info(self, attrs=['title', 'id', 'author', 'author_id', 'chapter_count', 'word_count', 'date_published',
+                                'date_updated', 'rated', 'status', 'language', 'genre', 'characters', 'reviews']):
+        """
+        Print information held about the story.
+        :param attrs: A list of attribute names to print information for.
+        :return: void
+        """
+        for attr in attrs:
+            print "%12s\t%s" % (attr, getattr(self, attr))
 
     # Method alias which allows the user to treat the get_chapters method like
     # a normal property if no manual opener is to be specified.
