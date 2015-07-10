@@ -2,3 +2,4 @@
 *.pyc
 test.py
 captcha.jpg
+config.yaml
