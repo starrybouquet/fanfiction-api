@@ -7,6 +7,7 @@
 * Download stories to pdf
 * Gather storie, favourites, and favourite authors of a user.
 
+
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
