@@ -5,7 +5,7 @@
 ## Features
 * Gather story, chapter and user information
 * Download stories to pdf
-* Gather storie, favourites, and favourite authors of a user.
+* Gather stories, favourites, and favourite authors of a user.
 
 
 ### Dependencies
