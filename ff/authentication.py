@@ -24,7 +24,7 @@ def _solve_captcha(captcha_url):
     return solution
 
 
-class FanfictionLogin(object):
+class FFLogin(object):
     def __init__(self, config_file=None):
         config = _get_config(config_file)
         self.username = config['username']

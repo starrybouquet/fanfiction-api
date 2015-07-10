@@ -3,8 +3,7 @@ __author__ = 'Samson Danziger'
 
 import getopt
 import sys
-from ff.fiction import Story
-from ff.downloader import download_pdf
+from ff import Story, download_pdf
 
 
 def main(argv):

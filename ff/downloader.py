@@ -5,7 +5,7 @@ import pdfkit
 root = "https://www.fanfiction.net"
 
 
-def get_chapters(story):
+def _get_chapters(story):
     """
     Fetch all chapters from a story.
     :param story: The story to fetch chapters from.
@@ -18,7 +18,7 @@ def get_chapters(story):
     return chapters
 
 
-def get_total_story_html(chapter_list):
+def _get_total_story_html(chapter_list):
     """
     Concatenate story text html, with chapter numbers as headings.Chapter headings are incremental.
     :param chapter_list: A list of chapters to concatenate.
@@ -43,6 +43,6 @@ def download_pdf(story, output, message=True):
         output += ".pdf"
     if message:
         print 'Downloading \'%s\' to %s' % (story.title, output)
-    chapters = get_chapters(story)
-    html = get_total_story_html(chapters)
+    chapters = _get_chapters(story)
+    html = _get_total_story_html(chapters)
     pdfkit.from_string(html, output)

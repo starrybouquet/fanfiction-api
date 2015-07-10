@@ -1,7 +1,6 @@
 import re, urllib2, bs4, unicodedata
 from datetime import timedelta, date
-import downloader
-
+import ff
 # Constants
 opener = urllib2.urlopen
 root = 'https://www.fanfiction.net'
@@ -212,7 +211,7 @@ class Story(object):
 
     def download(self, output='', ext='pdf', message=True):
         if ext == 'pdf':
-            downloader.download_pdf(self, output, message)
+            ff.download_pdf(self, output, message)
         else:
             print 'That functionality is not yet supported.'
 
