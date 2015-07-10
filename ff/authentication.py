@@ -5,7 +5,7 @@ import urllib2, cookielib, urllib
 import subprocess
 import getpass
 
-root = 'http://www.fanfiction.net'
+root = 'https://www.fanfiction.net'
 _CAPTCHA_REGEX = r"img_src:\s*'(\/cap\.jpg\?cid=(\w+)&a=(\w+))'"
 _CAPTCHAID_REGEX = r"captcha_id:\s*'(\w+)'"
 
