@@ -14,7 +14,7 @@
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
 
 ### Setup
-To setup, just run `python setup.py install`, from the root directory.
+To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
 
 
 
