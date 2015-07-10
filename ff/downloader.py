@@ -6,6 +6,11 @@ root = "https://www.fanfiction.net"
 
 
 def get_chapters(story):
+    """
+    Fetch all chapters from a story.
+    :param story: The story to fetch chapters from.
+    :return: A list of chapters.
+    """
     chapter_gen = story.get_chapters()
     chapters = []
     for chapter in chapter_gen:
@@ -14,6 +19,11 @@ def get_chapters(story):
 
 
 def get_total_story_html(chapter_list):
+    """
+    Concatenate story text html, with chapter numbers as headings.Chapter headings are incremental.
+    :param chapter_list: A list of chapters to concatenate.
+    :return:
+    """
     html = ""
     for i in range(len(chapter_list)):
         html += '<h2>Chapter %s</h2>\n' % str(i + 1)  # couldn't use %d here for some reason
