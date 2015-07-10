@@ -13,7 +13,7 @@
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
 
-### Setup
+### Setup (this may not work)
 To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
 
 
