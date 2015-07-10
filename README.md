@@ -2,12 +2,18 @@
 
 *based on API by [jabagawee](https://github.com/jabagawee/FanFiction.Net-API)*
 
-Updated to correctly parse story information
+## Features
+* Gather story, chapter and user information
+* Download stories to pdf
+* Gather storie, favourites, and favourite authors of a user.
 
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
+
+### Setup
+To setup, just run `python setup.py install`, from the root directory.
 
 
 
