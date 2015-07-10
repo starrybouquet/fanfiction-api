@@ -1,0 +1,48 @@
+#!/usr/bin/python
+
+import getopt
+import sys
+from ff.fiction import Story
+
+__author__ = 'samson'
+
+from ff.downloader import download_pdf
+
+
+def main(argv):
+    url = ''
+    storyid = 0
+    output = ''
+    help_string = """
+    ffdownload -h
+    ffdownload -u [url] -o [output]
+    ffdownload -s [storyid] -o [output]
+    """
+    try:
+        opts, args = getopt.getopt(argv, "hu:o:s:", ["url=", "output=", "storyid="])
+    except getopt.GetoptError:
+        print "downloader.py -u <url> -o <outputfile>"
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == "-h":
+            print "downloader.py -u <url> -o <outputfile>"
+            sys.exit(2)
+        elif opt in ("-u", "--url"):
+            url = arg
+        elif opt in ("-o", "--output"):
+            output = arg
+        elif opt in ("-s", "--storyid"):
+            storyid = int(arg)
+    if len(url) > 0:
+        story = Story(url=url)
+    elif storyid != 0:
+        story = Story(id=storyid)
+    else:
+        print "url or storyid not provided"
+        print help_string
+    print "Downloading %s to %s" % (story.title, output)
+    download_pdf(story, output)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
-import sys, getopt
 import pdfkit
-from fiction import *
 
 root = "https://www.fanfiction.net"
 
@@ -24,51 +22,17 @@ def get_total_story_html(chapter_list):
     return html
 
 
-def download_pdf(story, output):
-    chapters = get_chapters(story)
-    html = get_total_story_html(chapters)
-    pdfkit.from_string(html, output)
-
-
-def main(argv):
-    url = ''
-    storyid = 0
-    output = ''
-    help_string = """
-    downloader.py -h
-    downloader.py -u [url] -o [output]
-    downloader.py -s [storyid] -o [output]
+def download_pdf(story, output, message=True):
     """
-    try:
-        opts, args = getopt.getopt(argv, "hu:o:s:", ["url=", "output=", "storyid="])
-    except getopt.GetoptError:
-        print "downloader.py -u <url> -o <outputfile>"
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == "-h":
-            print "downloader.py -u <url> -o <outputfile>"
-            sys.exit(2)
-        elif opt in ("-u", "--url"):
-            url = arg
-        elif opt in ("-o", "--output"):
-            output = arg
-        elif opt in ("-s", "--storyid"):
-            storyid = int(arg)
-    if len(url) > 0:
-        story = Story(url=url)
-    elif storyid != 0:
-        story = Story(id=storyid)
-    else:
-        print "url or storyid not provided"
-        print help_string
+    :type message: bool
+    """
     if output == '':
         output = "%s_by_%s" % (story.title, story.author)
         output = output.replace(' ', '-')
-        if output[-4:] != ".pdf":  # output should be a pdf file
-            output += ".pdf"
-    print "Downloading %s to %s" % (story.title, output)
-    download_pdf(story, output)
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
+    if output[-4:] != ".pdf":  # output should be a pdf file
+        output += ".pdf"
+    if message:
+        print 'Downloading \'%s\' to %s' % (story.title, output)
+    chapters = get_chapters(story)
+    html = get_total_story_html(chapters)
+    pdfkit.from_string(html, output)
