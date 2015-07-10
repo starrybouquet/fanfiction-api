@@ -3,7 +3,7 @@ from datetime import timedelta, date
 
 # Constants
 opener = urllib2.urlopen
-root = 'http://www.fanfiction.net'
+root = 'https://www.fanfiction.net'
 
 # REGEX MATCHES
 
@@ -13,10 +13,6 @@ _CHAPTER_REGEX = r"var\s+chapter\s*=\s*(\d+);"
 _CHAPTERS_REGEX = r"Chapters:\s*(\d+)\s*"
 _WORDS_REGEX = r"Words:\s*([\d,]+)\s*"
 _TITLE_REGEX = r"var\s+title\s*=\s*'(.+)';"
-_TITLE_T_REGEX = r"var\s+title_t\s*=\s*'(.+)';"
-_SUMMARY_REGEX = r"var\s+summary\s*=\s*'(.+)';"
-_CATEGORYID_REGEX = r"var\s+categoryid\s*=\s*(\d+);"
-_CAT_TITLE_REGEX = r"var\s+cat_title\s*=\s*'(.+)';"
 _DATEP_REGEX = r"Published:\s*<span.+?='(\d+)'>"
 _DATEU_REGEX = r"Updated:\s*<span.+?='(\d+)'>"
 
@@ -47,9 +43,9 @@ _GENRES = [
 ]
 
 # TEMPLATES
-_STORY_URL_TEMPLATE = 'http;//www.fanfiction.net/s/%d'
-_CHAPTER_URL_TEMPLATE = 'http://www.fanfiction.net/s/%d/%d'
-_USERID_URL_TEMPLATE = 'http://www.fanfiction.net/u/%d'
+_STORY_URL_TEMPLATE = 'https://www.fanfiction.net/s/%d'
+_CHAPTER_URL_TEMPLATE = 'https://www.fanfiction.net/s/%d/%d'
+_USERID_URL_TEMPLATE = 'https://www.fanfiction.net/u/%d'
 
 _DATE_COMPARISON = date(1970, 1, 1)
 
@@ -133,9 +129,6 @@ class Story(object):
         self.word_count = _parse_integer(_WORDS_REGEX, source)
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
-        # self.summary = _unescape_javascript_string(_parse_string(_SUMMARY_REGEX, source)) # Currently tricky to find
-        # self.category_id = _parse_integer(_CATEGORYID_REGEX, source)
-        # self.category = _unescape_javascript_string(_parse_string(_CAT_TITLE_REGEX, source))
         self.date_published = _parse_date(_DATEP_REGEX, source)
         self.author = _unescape_javascript_string(_parse_string(_AUTHOR_REGEX, source))
 
@@ -260,7 +253,7 @@ class Chapter(object):
         else:
             # No multiple chapters, one-shot or only a single chapter released
             # until now; for the lack of a proper chapter title use the story's
-            self.title = _unescape_javascript_string(_parse_string(_TITLE_T_REGEX, source)).decode()
+            self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source)).decode()
         soup = soup.find('div', id='storytext')
         # Try to remove AddToAny share buttons
         try:
