@@ -1,4 +1,4 @@
-__author__ = 'samson'
+__author__ = 'Samson Danziger'
 
 import yaml, re
 import urllib2, cookielib, urllib

@@ -1,11 +1,9 @@
 #!/usr/bin/python
+__author__ = 'Samson Danziger'
 
 import getopt
 import sys
 from ff.fiction import Story
-
-__author__ = 'samson'
-
 from ff.downloader import download_pdf
 
 

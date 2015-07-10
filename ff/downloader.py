@@ -1,4 +1,4 @@
-#!/usr/bin/python
+__author__ = 'Samson Danziger'
 
 import pdfkit
 
