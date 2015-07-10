@@ -1,5 +1,6 @@
 import re, urllib2, bs4, unicodedata
 from datetime import timedelta, date
+import downloader
 
 # Constants
 opener = urllib2.urlopen
@@ -208,6 +209,12 @@ class Story(object):
         """
         for attr in attrs:
             print "%12s\t%s" % (attr, getattr(self, attr))
+
+    def download(self, output='', ext='pdf', message=True):
+        if ext == 'pdf':
+            downloader.download_pdf(self, output, message)
+        else:
+            print 'That functionality is not yet supported.'
 
     # Method alias which allows the user to treat the get_chapters method like
     # a normal property if no manual opener is to be specified.
