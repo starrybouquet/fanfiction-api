@@ -7,6 +7,7 @@ Updated to correctly parse story information
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
+* [pdfkit](https://pypi.python.org/pypi/pdfkit)
 
 
 
