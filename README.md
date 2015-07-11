@@ -1,12 +1,13 @@
 # FanFiction.net API
 
-*based on API by [jabagawee](https://github.com/jabagawee/FanFiction.Net-API)*
-
 ## Features
 * Gather story, chapter and user information
 * Download stories to pdf
 * Gather stories, favourites, and favourite authors of a user.
 
+## Planned features
+* Download in multiple formats (epub, mobi, text, etc)
+* Filter and search effectively
 
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
