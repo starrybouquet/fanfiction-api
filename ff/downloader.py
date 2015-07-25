@@ -64,12 +64,11 @@ def download_epub(story, output='', message=True):
             print 'Adding Chapter %d: %s' % (chapter.number, chapter.title)
 
         book.add_item(c)
-        spine.append(c)
-        toc.append(c)
-    
+        spine.append(c) # no idea what this does
+        toc.append(c) # add the chapter to the table of contents
+
     book.toc = toc
-    print toc
-    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNcx()) # add some other stuff
     book.add_item(epub.EpubNav())
     book.spine = spine
 
