@@ -1,5 +1,5 @@
 __author__ = 'Samson Danziger'
 
 from fiction import *
-from downloader import download_pdf
+from downloader import *
 from authentication import FFLogin
