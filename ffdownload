@@ -3,7 +3,7 @@ __author__ = 'Samson Danziger'
 
 import getopt
 import sys
-from ff import Story, download_pdf, download_epub
+from ff import Story, download
 
 
 def main(argv):
@@ -11,13 +11,14 @@ def main(argv):
     storyid = 0
     output = ''
     messages = True
+    ext = 'pdf'
     help_string = """
     ffdownload -h
     ffdownload -u [url] -o [output]
     ffdownload -s [storyid] -o [output]
     """
     try:
-        opts, args = getopt.getopt(argv, "hu:o:s:m", ["url=", "output=", "storyid=", "messages-off"])
+        opts, args = getopt.getopt(argv, "hu:o:s:mf:", ["url=", "output=", "storyid=", "messages-off", "format="])
     except getopt.GetoptError:
         print help_string
         sys.exit(2)
@@ -31,8 +32,10 @@ def main(argv):
             output = arg
         elif opt in ("-s", "--storyid"):
             storyid = int(arg)
-        elif opt in ("-mo", "--messages-off"):
+        elif opt in ("-m", "--messages-off"):
             messages = False
+        elif opt in ("-f", "--format"):
+            ext = arg
     if len(url) > 0:
         story = Story(url=url)
     elif storyid != 0:
@@ -40,13 +43,7 @@ def main(argv):
     else:
         print "url or storyid not provided"
         print help_string
-    ext = output.split('.')[-1].lower()
-    if ext == 'pdf':
-        download_pdf(story, output, messages)
-    elif ext == 'epub':
-        download_epub(story, output, messages)
-    else:
-        print 'That extension is not yet available.'
+    download(story, output=output, message=messages, ext=ext)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

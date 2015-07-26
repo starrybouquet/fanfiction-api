@@ -89,13 +89,9 @@ def download_mobi(story, output='', message=True):
         print 'Moving to %s...' % (output)
     shutil.move('%s/convert.mobi' % (temp_storage), '%s' % (output))
 
-def download(story, output='', message=True, ext='pdf'):
+def download(story, output='', message=True, ext=''):
     ext = ext.lower()
-    name = output.split('.')
-    extension = name[-1].lower()
-    name = name[:-1]
-    if extension != ext:
-        output = '%s.%s' % (name, ext)
+    output = '%s.%s' % (output, ext)
     if ext == 'pdf':
         download_pdf(story, output, message)
     elif ext == 'epub':
