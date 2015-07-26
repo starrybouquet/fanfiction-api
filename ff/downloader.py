@@ -2,6 +2,8 @@ __author__ = 'Samson Danziger'
 
 import pdfkit
 from ebooklib import epub
+import tempfile
+import os, shutil
 
 root = "https://www.fanfiction.net"
 
@@ -48,7 +50,7 @@ def download_epub(story, output='', message=True):
     # create chapters
     toc = []
     section = []
-    spine = ['cover', 'nav']
+    spine = ['nav']
     for chapter in story.get_chapters():
         if message:
             print 'Adding Chapter %d: %s' % (chapter.number, chapter.title)
@@ -70,3 +72,35 @@ def download_epub(story, output='', message=True):
         print 'Compiling ePub...'
     # write epub
     epub.write_epub(output, book)
+
+def download_mobi(story, output='', message=True):
+    if output == '':
+        output = "%s_by_%s" % (story.title, story.author)
+        output = output.replace(' ', '-')
+    if output[-5:].lower() != ".mobi":  # output should be a pdf file
+        output += ".mobi"
+    temp_storage = tempfile.gettempdir()
+    current = os.system('pwd')
+    download_epub(story, '%s/temp.epub' % (temp_storage), message)
+    if message:
+        print 'Converting to mobi...'
+    os.system('kindlegen %s/temp.epub -c2 -o convert.mobi' % (temp_storage))
+    if message:
+        print 'Moving to %s...' % (output)
+    shutil.move('%s/convert.mobi' % (temp_storage), '%s' % (output))
+
+def download(story, output='', message=True, ext='pdf'):
+    ext = ext.lower()
+    name = output.split('.')
+    extension = name[-1].lower()
+    name = name[:-1]
+    if extension != ext:
+        output = '%s.%s' % (name, ext)
+    if ext == 'pdf':
+        download_pdf(story, output, message)
+    elif ext == 'epub':
+        download_epub(story, output, message)
+    elif ext == 'mobi':
+        download_mobi(story, output, message)
+    else:
+        print 'That functionality does not yet exist.'
