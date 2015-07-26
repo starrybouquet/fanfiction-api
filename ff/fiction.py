@@ -209,11 +209,8 @@ class Story(object):
         for attr in attrs:
             print "%12s\t%s" % (attr, getattr(self, attr))
 
-    def download(self, output='', ext='pdf', message=True):
-        if ext == 'pdf':
-            ff.download_pdf(self, output, message)
-        else:
-            print 'That functionality is not yet supported.'
+    def download(self, output='', message=True, ext=''):
+        ff.download(self, output=output, message=message, ext=ext)
 
     # Method alias which allows the user to treat the get_chapters method like
     # a normal property if no manual opener is to be specified.
@@ -333,5 +330,3 @@ class User(object):
             author_url = author_tag.get('href')
             author_url = root + author_url
             yield User(author_url)
-
-

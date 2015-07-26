@@ -36,7 +36,7 @@ def download_epub(story, output='', message=True):
     if output == '':
         output = "%s_by_%s" % (story.title, story.author)
         output = output.replace(' ', '-')
-    if output[-5:].lower() != ".epub":  # output should be a pdf file
+    if output[-5:].lower() != ".epub":
         output += ".epub"
     if message:
         print 'Downloading \'%s\' to %s...' % (story.title, output)
@@ -77,7 +77,7 @@ def download_mobi(story, output='', message=True):
     if output == '':
         output = "%s_by_%s" % (story.title, story.author)
         output = output.replace(' ', '-')
-    if output[-5:].lower() != ".mobi":  # output should be a pdf file
+    if output[-5:].lower() != ".mobi":
         output += ".mobi"
     temp_storage = tempfile.gettempdir()
     current = os.system('pwd')
@@ -89,6 +89,28 @@ def download_mobi(story, output='', message=True):
         print 'Moving to %s...' % (output)
     shutil.move('%s/convert.mobi' % (temp_storage), '%s' % (output))
 
+def download_txt(story, output='', message=True):
+    if output == '':
+        output = "%s_by_%s" % (story.title, story.author)
+        output = output.replace(' ', '-')
+    if output[-5:].lower() != ".txt":
+        output += ".txt"
+    text = ''
+    for chapter in story.get_chapters():
+        if message:
+            print 'Adding %s...' % (chapter.title)
+        text += 'Chapter %d: %s\n' % (chapter.number, chapter.title)
+        text += chapter.text
+        text += '\n' * 10
+    if message:
+        print 'Writing to file...'
+    f = open(output, 'wb')
+    f.write(text)
+    f.close()
+    if message:
+        print 'Done!'
+
+
 def download(story, output='', message=True, ext=''):
     ext = ext.lower()
     output = '%s.%s' % (output, ext)
@@ -98,5 +120,7 @@ def download(story, output='', message=True, ext=''):
         download_epub(story, output, message)
     elif ext == 'mobi':
         download_mobi(story, output, message)
+    elif ext == 'txt' or ext == 'text':
+        download_txt(story, output, message)
     else:
         print 'That functionality does not yet exist.'

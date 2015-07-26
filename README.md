@@ -2,11 +2,10 @@
 
 ## Features
 * Gather story, chapter and user information
-* Download stories to pdf, epub and mobi
+* Download stories to pdf, epub, mobi and txt
 * Gather stories, favourites, and favourite authors of a user.
 
 ## Planned features
-* Download in multiple formats
 * Filter and search effectively
 
 ### Dependencies
