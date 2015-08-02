@@ -1,50 +1,82 @@
 #!/usr/bin/python
 __author__ = 'Samson Danziger'
 
-import getopt
-import sys
+import argparse
+import os, sys
 from ff import Story, download
 
+"""
+    ffdownload story
+        download story.pdf to current directory
+    ffdownload story -o output
+        download story.pdf to output/
+    ffdownload story1 story2 storyN
+        download stories to current directory
+    ffdownload story1 story2 storyN -o output
+        download stories to output/
+    ffdownload ... -t format
+        specify a format. default is pdf
+    ffdownload ... -n
+        don't show messages
+    ffdownload -f file
+        download stories which are listed in the file
+"""
 
-def main(argv):
-    url = ''
-    storyid = 0
-    output = ''
-    messages = True
-    ext = 'pdf'
-    help_string = """
-    ffdownload -h
-    ffdownload -u [url] -o [output]
-    ffdownload -s [storyid] -o [output]
-    """
-    try:
-        opts, args = getopt.getopt(argv, "hu:o:s:mf:", ["url=", "output=", "storyid=", "messages-off", "format="])
-    except getopt.GetoptError:
-        print help_string
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == "-h":
-            print help_string
-            sys.exit(2)
-        elif opt in ("-u", "--url"):
-            url = arg
-        elif opt in ("-o", "--output"):
-            output = arg
-        elif opt in ("-s", "--storyid"):
-            storyid = int(arg)
-        elif opt in ("-m", "--messages-off"):
-            messages = False
-        elif opt in ("-f", "--format"):
-            ext = arg
-    if len(url) > 0:
-        story = Story(url=url)
-    elif storyid != 0:
-        story = Story(id=storyid)
+def get_parser():
+    parser = argparse.ArgumentParser(description='Download stories from fanfiction.net')
+
+    parser.add_argument('fictions', metavar='STORY', type=str, nargs='+', help='Story / stories to download.')
+    parser.add_argument('-o', '--output', dest='output', metavar='OUTPUT', type=str, nargs=1, help='Output directory. Default is the current directory.')
+    parser.add_argument('-t', '--filetype', dest='extension', metavar='EXT', default='PDF', type=str, nargs='?', help='Filetype to download as. Default is PDF. Options are PDF, MOBI, EPUB, TXT.')
+    parser.add_argument('-n', '--no-message', dest='messages', help='Don\'t show messages', action='store_false')
+    parser.add_argument('-f', '--file', dest='treat_as_file', help='Treat STORY arguments as files which list stories.', action='store_true')
+    return parser
+
+def _get_story(f):
+    if f.startswith('https://') or f.startswith('http://'):
+        s = Story(url=f)
+    elif f.startswith('www'):
+        s = Story(url='https://%s' % f)
     else:
-        print "url or storyid not provided"
-        print help_string
-        return
-    download(story, output=output, message=messages, ext=ext)
+        s = Story(id=int(f))
+    return s
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+
+def main(args):
+    extension = args.extension
+    fictions = args.fictions
+    messages = args.messages
+    output = args.output
+    file = args.treat_as_file
+
+    # get stories
+    stories = []
+    if file:
+        for f in fictions:
+            o = open(f, 'r+')
+            for line in o.read():
+                s = _get_story(line)
+                stories.append(s)
+            o.close()
+    else:
+        for f in fictions:
+            s = _get_story(f)
+            stories.append(s)
+
+    # deal with output
+    if output != None:
+        output = output[0]
+        if not output.endswith('/'):
+            output = output + '/'
+        if not os.path.isdir(output):
+            os.makedirs(output)
+    else:
+        output = './'
+
+    for story in stories:
+        download(story, output="%s%s-%s" % (output, story.title.replace(' ', '_'), story.author.replace(' ', '_')), message=messages, ext=extension)
+
+
+if __name__ == '__main__':
+    args = get_parser().parse_args()
+    main(args)
