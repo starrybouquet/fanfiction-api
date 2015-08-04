@@ -19,7 +19,7 @@
 To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
 
 Alternatively the package is available at [pypi](https://pypi.python.org/pypi/fanfiction-api).
-To install run `pip install fanfiction-api`
+To install run `pip install  fanfiction-api`
 
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
