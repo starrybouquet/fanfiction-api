@@ -18,10 +18,12 @@
 ### Setup
 To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
 
+Alternatively the package is available at [pypi](https://pypi.python.org/pypi/fanfiction-api).
+To install run `pip install fanfiction-api`
+
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
 * [ebooklib](https://pypi.python.org/pypi/EbookLib/0.15)
 * [KindleGen](http://www.amazon.com/gp/feature.html?docId=1000765211)
-
