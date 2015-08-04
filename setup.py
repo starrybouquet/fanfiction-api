@@ -1,15 +1,15 @@
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 setup(name='fanfiction-api',
       version='1.0',
       description='Simple API to fanfiction.net',
-      url='https://github.com/MarsCapone/fanfiction-api',
+      download_url='https://github.com/MarsCapone/fanfiction-api',
+      url='https://marscapone.github.io/fanfiction-api',
       author='Samson Danziger',
       author_email='samson.danziger@gmail.com',
-      packages=find_packages(),
+      packages=['ff'],
       install_requires=[
           'PyYAML',
           'pdfkit',
           'beautifulsoup4'
-      ],
-      zip_safe=False)
+      ])
