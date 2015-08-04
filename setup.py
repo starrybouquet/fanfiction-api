@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='fanfiction-api',
       version='1.0',
@@ -11,5 +11,7 @@ setup(name='fanfiction-api',
       install_requires=[
           'PyYAML',
           'pdfkit',
-          'beautifulsoup4'
+          'beautifulsoup4',
+          'Ebooklib',
+          'lxml'
       ])

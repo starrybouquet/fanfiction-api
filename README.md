@@ -10,16 +10,18 @@
   * Download from file(s)
   * Download to different formats
   * Specify output directory
-  
+
 
 ## Planned features
 * Filter and search effectively
+
+### Setup
+To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
 
 ### Dependencies
 * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
+* [ebooklib](https://pypi.python.org/pypi/EbookLib/0.15)
 * [KindleGen](http://www.amazon.com/gp/feature.html?docId=1000765211)
 
-### Setup (this may not work)
-To setup, clone or download the zip, then run `python setup.py install`, from the root directory.
