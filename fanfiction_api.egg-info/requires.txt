@@ -1,0 +1,4 @@
+PyYAML
+pdfkit
+beautifulsoup4
+Ebooklib
