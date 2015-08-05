@@ -27,23 +27,25 @@ def _solve_captcha(captcha_url):
     return solution
 
 class FFLogin(object):
+
     def __init__(self, config_file=None):
         config = _get_config(config_file)
-        try:
-            self.username = config['username']
-            self.email = config['email']
-            self.password = config['password']
-
-        except KeyError:
-            print "Have you setup a config file as detailed in the readme?"
-            break
-        except AttributeError:
-            print "Failed to read config file."
-            self.username = raw_input("Enter fanfiction.net username: ")
-            self.email = raw_input("Enter email used to register on fanfiction.net: ")
-            self.password = getpass.getpass("Enter fanfiction.net password: ")
-
+        self._setup_details(config)
         self.login = self.get_session()
+
+    def _setup_details(self, config):
+        if config['username'] == None:
+            self.username = raw_input("Enter fanfiction.net username: ")
+        else:
+            self.username = config['username']
+        if config['email'] == None:
+            self.email = raw_input("Enter email used to register on fanfiction.net: ")
+        else:
+            self.email = config['email']
+        if config['password'] == None:
+            self.password = getpass.getpass("Enter fanfiction.net password: ")
+        else:
+            self.password = config['password']
 
     def get_session(self):
         """
@@ -71,7 +73,7 @@ class FFLogin(object):
         with requests.Session() as r:
             r.get(login_url)
             p = r.post(login_url, data=data)
-            if self.username.lower() in p.text:
+            if self.username in p.text:
                 return r
             else:
                 return False

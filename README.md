@@ -12,7 +12,6 @@
   * Download to different formats
   * Specify output directory
 
-
 ## Planned features
 * Filter and search effectively
 
