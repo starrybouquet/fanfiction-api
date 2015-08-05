@@ -26,4 +26,5 @@ To install run `pip install  fanfiction-api`
 * [PyYAML](http://pyyaml.org/wiki/PyYAMLDocumentation)
 * [pdfkit](https://pypi.python.org/pypi/pdfkit)
 * [ebooklib](https://pypi.python.org/pypi/EbookLib/0.15)
+* [requests](https://pypi.python.org/pypi/requests)
 * [KindleGen](http://www.amazon.com/gp/feature.html?docId=1000765211)

@@ -31,7 +31,7 @@ class FFLogin(object):
     def __init__(self, config_file=None):
         config = _get_config(config_file)
         self._setup_details(config)
-        self.login = self.get_session()
+        self.session = self.get_session()
 
     def _setup_details(self, config):
         if config['username'] == None:

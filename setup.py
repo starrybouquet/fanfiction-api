@@ -12,5 +12,6 @@ setup(name='fanfiction-api',
           'PyYAML',
           'pdfkit',
           'beautifulsoup4',
-          'Ebooklib'
+          'Ebooklib',
+          'requests'
       ])
