@@ -29,9 +29,19 @@ def _solve_captcha(captcha_url):
 class FFLogin(object):
     def __init__(self, config_file=None):
         config = _get_config(config_file)
-        self.username = config['username']
-        self.email = config['email']
-        self.password = config['password']
+        try:
+            self.username = config['username']
+            self.email = config['email']
+            self.password = config['password']
+
+        except KeyError:
+            print "Have you setup a config file as detailed in the readme?"
+            break
+        except AttributeError:
+            print "Failed to read config file."
+            self.username = raw_input("Enter fanfiction.net username: ")
+            self.email = raw_input("Enter email used to register on fanfiction.net: ")
+            self.password = getpass.getpass("Enter fanfiction.net password: ")
 
         self.login = self.get_session()
 
