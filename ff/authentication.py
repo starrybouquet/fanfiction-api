@@ -5,15 +5,12 @@ import requests
 import subprocess
 import getpass
 import shutil
+from config import Config
 
 root = 'https://www.fanfiction.net'
 login_url = 'https://www.fanfiction.net/login.php'
 settings_url = root + '/account/settings.php'
 parser = 'lxml'
-
-def _get_config(path=None):
-    config = yaml.load(open('config.yaml', 'r').read())
-    return config
 
 def _solve_captcha(captcha_url):
     response = requests.get(captcha_url, stream=True)
@@ -28,24 +25,23 @@ def _solve_captcha(captcha_url):
 
 class FFLogin(object):
 
-    def __init__(self, config_file=None):
-        config = _get_config(config_file)
-        self._setup_details(config)
+    def __init__(self, config_file=None, reset_config=False):
+        self.config = Config(config_file)
+        self._setup_config(self.config, reset_config)
         self.session = self.get_session()
 
-    def _setup_details(self, config):
-        if config['username'] == None:
+    def _setup_config(self, c, reset):
+        if reset:
+            c.reset()
+        if c.get('username') == None:
             self.username = raw_input("Enter fanfiction.net username: ")
-        else:
-            self.username = config['username']
-        if config['email'] == None:
+            c.set_username(self.username)
+        if c.get('email') == None:
             self.email = raw_input("Enter email used to register on fanfiction.net: ")
-        else:
-            self.email = config['email']
-        if config['password'] == None:
+            c.set_email(self.email)
+        if c.get('password') == None:
             self.password = getpass.getpass("Enter fanfiction.net password: ")
-        else:
-            self.password = config['password']
+            c.set_password(self.password)
 
     def get_session(self):
         """
@@ -67,13 +63,13 @@ class FFLogin(object):
         captcha = _solve_captcha(root + captcha_src)
         data['captcha'] = captcha
 
-        data['email'] = self.email
-        data['password'] = self.password
+        data['email'] = self.config.get('email')
+        data['password'] = self.config.get('password')
 
         with requests.Session() as r:
             r.get(login_url)
             p = r.post(login_url, data=data)
-            if self.username in p.text:
+            if self.config.get('username') in p.text:
                 return r
             else:
                 return False
