@@ -1,8 +1,7 @@
-import re, urllib2, bs4, unicodedata
+import re, requests, bs4, unicodedata
 from datetime import timedelta, date
 import ff
 # Constants
-opener = urllib2.urlopen
 root = 'https://www.fanfiction.net'
 
 # REGEX MATCHES
@@ -115,7 +114,8 @@ class Story(object):
             else:
                 url = _STORY_URL_TEMPLATE % int(id)
 
-        source = opener(url).read()
+        source = requests.get(url)
+        source = source.text
         # Easily parsable and directly contained in the JavaScript, lets hope
         # that doesn't change or it turns into something like below
         self.id = _parse_integer(_STORYID_REGEX, source)
@@ -333,5 +333,3 @@ class User(object):
             author_url = author_tag.get('href')
             author_url = root + author_url
             yield User(author_url)
-
-
