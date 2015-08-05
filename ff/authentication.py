@@ -8,8 +8,8 @@ import shutil
 from config import Config
 
 root = 'https://www.fanfiction.net'
-login_url = 'https://www.fanfiction.net/login.php'
-settings_url = root + '/account/settings.php'
+login_url = root + '/login.php'
+user_url = root + '/account/settings.php'
 parser = 'lxml'
 
 def _solve_captcha(captcha_url):
@@ -23,7 +23,11 @@ def _solve_captcha(captcha_url):
     cap_viewer.kill()
     return solution
 
-class FFLogin(object):
+class Login(object):
+    def get_session(self):
+        pass
+
+class FFLogin(Login):
 
     def __init__(self, config_file=None, reset_config=False):
         self.config = Config(config_file)
