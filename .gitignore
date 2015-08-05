@@ -1,5 +1,5 @@
 .idea/
 *.pyc
 test.*
+test*.py
 captcha.jpg
-config.yaml

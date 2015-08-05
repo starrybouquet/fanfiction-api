@@ -4,7 +4,8 @@
 * Gather story, chapter and user information
 * Download stories to pdf, epub, mobi and txt
 * Gather stories, favourites, and favourite authors of a user.
-* Full command line functionality (UNTESTED)
+* Login Sessions
+* Full command line functionality
   * Help file
   * Download multiple stories
   * Download from file(s)
