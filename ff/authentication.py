@@ -1,63 +1,67 @@
 __author__ = 'Samson Danziger'
 
-import yaml, re
-import urllib2, cookielib, urllib
+import yaml, bs4
+import requests
 import subprocess
 import getpass
+import shutil
 
 root = 'https://www.fanfiction.net'
-_CAPTCHA_REGEX = r"img_src:\s*'(\/cap\.jpg\?cid=(\w+)&a=(\w+))'"
-_CAPTCHAID_REGEX = r"captcha_id:\s*'(\w+)'"
-
+login_url = 'https://www.fanfiction.net/login.php'
+settings_url = root + '/account/settings.php'
+parser = 'lxml'
 
 def _get_config(path=None):
     config = yaml.load(open('config.yaml', 'r').read())
     return config
 
-
 def _solve_captcha(captcha_url):
-    urllib.urlretrieve(captcha_url, 'captcha.jpg')
+    response = requests.get(captcha_url, stream=True)
+    with open('captcha.jpg', 'wb') as out:
+        shutil.copyfileobj(response.raw, out)
+    del response
     cap_viewer = subprocess.Popen(['display', '-monochrome', 'captcha.jpg'])
     solution = raw_input('Solve CAPTCHA: ')
     cap_viewer.terminate()
     cap_viewer.kill()
     return solution
 
-
 class FFLogin(object):
     def __init__(self, config_file=None):
         config = _get_config(config_file)
         self.username = config['username']
         self.email = config['email']
+        self.password = config['password']
 
-        self.cj = cookielib.CookieJar()
-        self.opener = urllib2.build_opener(
-            urllib2.HTTPRedirectHandler(),
-            urllib2.HTTPHandler(debuglevel=0),
-            urllib2.HTTPSHandler(debuglevel=0),
-            urllib2.HTTPCookieProcessor(self.cj)
-        )
-        self.opener.addheaders = [('User-agent',
-                                   'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.1.4322)')]
-        self.login()
+        self.login = self.get_session()
 
-    def login(self):  # Not working. Cannot get past login form.
+    def get_session(self):
         """
         Handle login
-        :return: boolean, True is login was a success, otherwise False.
+        :returns session: requests.Session() that has logged in if login was successful, else false.
         """
-        source = urllib2.urlopen("https://www.fanfiction.net/login.php").read()
-        captcha_path = re.search(_CAPTCHA_REGEX, source).group(1).decode('utf-8')
-        captcha_url = root + captcha_path
-        captcha_id = re.search(_CAPTCHAID_REGEX, source).group(1).decode('utf-8')
+        source = requests.get(login_url)
+        soup = bs4.BeautifulSoup(source.text, parser)
 
-        values = {
-            'email': self.email,
-            'password': getpass.unix_getpass('Enter fanfiction.net password: '),
-            'captcha': _solve_captcha(captcha_url)
-        }
-        data = urllib.urlencode(values)
-        response = self.opener.open("https://www.fanfiction.net/login.php", data)
+        data = {}
+        form = soup.find(id='login')
+        inputs = form.find_all('input')
+        captcha_tag = soup.find(id='xcaptcha')
+        captcha_src = captcha_tag.get('src')
 
-        page = response.read()
-        print page
+        for i in inputs:
+            data[i.get('name')] = i.get('value')
+
+        captcha = _solve_captcha(root + captcha_src)
+        data['captcha'] = captcha
+
+        data['email'] = self.email
+        data['password'] = self.password
+
+        with requests.Session() as r:
+            r.get(login_url)
+            p = r.post(login_url, data=data)
+            if self.username.lower() in p.text:
+                return r
+            else:
+                return False
