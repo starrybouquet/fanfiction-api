@@ -23,6 +23,7 @@ To install run `pip install  fanfiction-api`
 
 If authentication is going to be used, the program expects to see the file `$HOME/.ffconf.yaml`, which should contain your fanfiction.net details. If no config file is specified, and this one does not exist, it will be created.
 ```
+  #$HOME/.ffconf.yaml
   username:
   email:
   password:
