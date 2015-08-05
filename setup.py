@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='fanfiction-api',
-      version='1.0',
+      version='1.1',
       description='Simple API to fanfiction.net',
       download_url='https://github.com/MarsCapone/fanfiction-api',
       url='https://marscapone.github.io/fanfiction-api',
