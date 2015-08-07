@@ -7,15 +7,26 @@ import os, shutil
 
 root = "https://www.fanfiction.net"
 
+def _get_download_name(story):
+    s = "%s_by_%s" % (story.title, story.author)
+    s = s.replace(' ', '-')
+    return s
+
+
+def _add_extension(name, ext):
+    if not name.endswith('.%s' % (ext)):
+        name += '.%s' % (ext)
+    return name
+
+
+
 def download_pdf(story, output='', message=True):
     """ Download a story to pdf.
     :type message: bool
     """
     if output == '':
-        output = "%s_by_%s" % (story.title, story.author)
-        output = output.replace(' ', '-')
-    if output[-4:].lower() != ".pdf":  # output should be a pdf file
-        output += ".pdf"
+        output = _get_download_name(story)
+    output = _add_extension(output, 'pdf')
     if message:
         print 'Downloading \'%s\' to %s...' % (story.title, output)
     html = ''
@@ -34,10 +45,8 @@ def download_epub(story, output='', message=True):
     :type message: bool
     """
     if output == '':
-        output = "%s_by_%s" % (story.title, story.author)
-        output = output.replace(' ', '-')
-    if output[-5:].lower() != ".epub":
-        output += ".epub"
+        output = _get_download_name(story)
+    output = _add_extension(output, 'epub')
     if message:
         print 'Downloading \'%s\' to %s...' % (story.title, output)
     # actual book build
@@ -75,10 +84,8 @@ def download_epub(story, output='', message=True):
 
 def download_mobi(story, output='', message=True):
     if output == '':
-        output = "%s_by_%s" % (story.title, story.author)
-        output = output.replace(' ', '-')
-    if output[-5:].lower() != ".mobi":
-        output += ".mobi"
+        output = _get_download_name(story)
+    output = _add_extension(output, 'mobi')
     temp_storage = tempfile.gettempdir()
     current = os.system('pwd')
     download_epub(story, '%s/temp.epub' % (temp_storage), message)
@@ -91,10 +98,8 @@ def download_mobi(story, output='', message=True):
 
 def download_txt(story, output='', message=True):
     if output == '':
-        output = "%s_by_%s" % (story.title, story.author)
-        output = output.replace(' ', '-')
-    if output[-5:].lower() != ".txt":
-        output += ".txt"
+        output = _get_download_name(story)
+    output = _add_extension(output, 'txt')
     text = ''
     for chapter in story.get_chapters():
         if message:
@@ -112,15 +117,18 @@ def download_txt(story, output='', message=True):
 
 
 def download(story, output='', message=True, ext=''):
-    ext = ext.lower()
-    output = '%s.%s' % (output, ext)
-    if ext == 'pdf':
-        download_pdf(story, output, message)
-    elif ext == 'epub':
-        download_epub(story, output, message)
-    elif ext == 'mobi':
-        download_mobi(story, output, message)
-    elif ext == 'txt' or ext == 'text':
-        download_txt(story, output, message)
-    else:
-        print 'That functionality does not yet exist.'
+    try:
+        ext = ext.lower()
+        output = '%s.%s' % (output, ext)
+        if ext == 'pdf':
+            download_pdf(story, output, message)
+        elif ext == 'epub':
+            download_epub(story, output, message)
+        elif ext == 'mobi':
+            download_mobi(story, output, message)
+        elif ext == 'txt' or ext == 'text':
+            download_txt(story, output, message)
+        else:
+            print 'That functionality does not yet exist.'
+    except KeyboardInterrupt:
+        print 'Stopping download.'
