@@ -12,6 +12,9 @@
   * Download to different formats
   * Specify output directory
 
+## Bugs
+* Printing to pdf, generates a weird format. Also doesn't work without X interface.
+
 ## Planned features
 * Filter and search effectively
 
