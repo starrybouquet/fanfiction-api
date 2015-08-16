@@ -1,9 +1,10 @@
 __author__ = 'Samson Danziger'
 
-import pdfkit
+from weasyprint import HTML
 from ebooklib import epub
 import tempfile
 import os, shutil
+import codecs
 
 root = "https://www.fanfiction.net"
 
@@ -38,7 +39,14 @@ def download_pdf(story, output='', message=True):
         html += '</br>' * 10
     if message:
         print 'Compiling PDF...'
-    pdfkit.from_string(html, output)
+
+    # This turned out not to work on the command line as it needed an X interface.
+    #pdfkit.from_string(html, output)
+    # Instead trying with weasyprint
+    content = unicode(html.strip(codecs.BOM_UTF8), 'utf-8')
+    h = HTML(content)
+    h.write_pdf(output)
+    
 
 def download_epub(story, output='', message=True):
     """ Download a story to ePub.
