@@ -387,7 +387,7 @@ class User(object):
         else:
             self.userid = _parse_integer(_USERID_URL_EXTRACT, url)
 
-        source = requsts.get(url)
+        source = requests.get(url)
         source = source.text
         self._soup = bs4.BeautifulSoup(source, 'html5lib')
         self.url = url
