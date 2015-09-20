@@ -27,6 +27,13 @@ _USER_FAVOURITE_AUTHOR_COUNT_REGEX = r"Favorite Authors\s*<span class=badge>(\d+
 # Useful for generating a review URL later on
 _STORYTEXTID_REGEX = r"var\s+storytextid\s*=\s*storytextid=(\d+);"
 
+# REGEX that used to parse reviews page
+_REVIEW_COMPLETE_INFO_REGEX = r"img class=.*?</div"
+_REVIEW_USER_NAME_REGEX = r"> *([^< ][^<]*)<"
+_REVIEW_CHAPTER_REGEX = r"<small style=[^>]*>([^<]*)<"
+_REVIEW_TIME_REGEX = r"<span data[^>]*>([^<]*)<"
+_REVIEW_TEXT_REGEX = r"<div[^>]*>([^<]*)<"
+
 # Used to parse the attributes which aren't directly contained in the
 # JavaScript and hence need to be parsed manually
 _NON_JAVASCRIPT_REGEX = r'Rated:(.+)'
@@ -51,7 +58,7 @@ _DATE_COMPARISON = date(1970, 1, 1)
 
 def _parse_string(regex, source):
     """Returns first group of matched regular expression as string."""
-    return re.search(regex, source).group(1).decode('utf-8')
+    return re.search(regex, source).group(1)
 
 
 def _parse_integer(regex, source):
@@ -209,12 +216,98 @@ class Story(object):
         for attr in attrs:
             print "%12s\t%s" % (attr, getattr(self, attr))
 
+    def get_reviews(self):
+        """
+        A generator for all reviews in the story.
+        :return: A generator to fetch reviews.
+        """
+        return ReviewsGenerator(self.id)
+
+
+
     def download(self, output='', message=True, ext=''):
         ff.download(self, output=output, message=message, ext=ext)
 
     # Method alias which allows the user to treat the get_chapters method like
     # a normal property if no manual opener is to be specified.
     chapters = property(get_chapters)
+
+class ReviewsGenerator(object):
+    """
+    Class that generates review in chronological order
+    Attributes:
+        base_url            (int):      storys review url without specified page number
+        page_number         (int):      number of current review page
+        reviews_cache       List(str):  list of already downloaded  (and partially processed) reviews 
+        skip_reviews_number (int):      length of already processed review from review_cache
+    """
+    def __init__(self, story_id, chapter=0):
+        """
+        If chapter unspecified then generator generates review for all chapters
+        """
+        self.story_id = story_id
+        self.base_url = root + '/r/' + str(story_id) + '/' + str(chapter) + '/'
+
+    def __iter__(self):
+        self.page_number = 0
+        self.reviews_cache = []
+        self.skip_reviews_number = 0
+        return self
+
+    def next(self):
+        self.skip_reviews_number += 1
+        if len(self.reviews_cache) >= self.skip_reviews_number:
+            return Review(self.story_id, self.reviews_cache[self.skip_reviews_number - 1])
+
+        self.page_number += 1
+        page = self._downloadReviewPage(self.page_number)
+        self.reviews_cache = re.findall(_REVIEW_COMPLETE_INFO_REGEX, page, re.DOTALL)
+
+        if len(self.reviews_cache) == 0:
+            raise StopIteration
+
+        self.skip_reviews_number = 1
+        return Review(self.story_id, self.reviews_cache[0])
+
+    def _downloadReviewPage(self, page_number):
+        url = self.base_url + str(page_number) + '/'
+        return requests.get(url).text
+
+
+
+class Review(object):
+    """
+    A single review of fanfiction story, on fanfiction.net
+    Attributes:
+        story_id    (int):  story ID
+        user_id     (int):  ID of user who submited review (may be None if review is anonymous)
+        user_name   (str):  user name (or pseudonym for anonymous review)
+        chapter     (str):  chapter name
+        time_ago    (str):  how much time passed since review submit (format may be inconsistent with what you see in browser just because fanfiction.net sends different pages depend on do you download page from browser or from console/that library
+        text        (str):  review text
+    """
+    def __init__(self, story_id, unparsed_info):
+        """
+        That method should not be invoked outside of Story and Chapter classes
+        :param story_id         (int):  story ID
+        :param unparsed_info    (int):  string that contain the rest info
+        """
+        self.story_id = story_id
+        self.user_name = _parse_string(_REVIEW_USER_NAME_REGEX, unparsed_info)
+        self.chapter = _parse_string(_REVIEW_CHAPTER_REGEX, unparsed_info)
+        self.text = _parse_string(_REVIEW_TEXT_REGEX, unparsed_info)
+
+        self.time_ago = _parse_string(_REVIEW_TIME_REGEX, unparsed_info)
+
+        # fanfiction.net provide strange format, instead of '8 hours ago' it show '8h'
+        # so let's add ' ago' suffix if review submitted hours or minutes ago
+        if self.time_ago[-1] == 'h' or self.time_ago[-1] == 'm':
+            self.time_ago += ' ago'
+
+        if re.search(_USERID_URL_EXTRACT, unparsed_info) == None:
+            self.user_id = None
+        else:
+            self.user_id = _parse_integer(_USERID_URL_EXTRACT, unparsed_info)
 
 
 class Chapter(object):
@@ -274,6 +367,13 @@ class Chapter(object):
         texts = soup.findAll(text=True)
         self.text_list = filter(_visible_filter, texts)
         self.text = '\n'.join(self.text_list)
+
+    def get_reviews(self):
+        """
+        A generator for all reviews for that chapter
+        :return: A generator to fetch reviews.
+        """
+        return ReviewsGenerator(self.story_id, self.number)
 
 class User(object):
     def __init__(self, url=None, id=None):
