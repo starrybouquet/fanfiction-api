@@ -14,15 +14,15 @@ class Config(object):
 
         self.config = yaml.load(open(file, 'r'))
         self._file = file
-        print(self.config)
+        print self.config
 
     def _set_config(self):
         if not os.path.isfile(CONFIG_LOCATION):
-            print("No config file detected.")
-            begin = input('Would you like to create a config file in %s? y/n ' % (HOME))
+            print "No config file detected."
+            begin = raw_input('Would you like to create a config file in %s? y/n ' % (HOME))
             if begin.lower().startswith('y'):
                 yaml.dump(SKELETON_CONFIG, open(CONFIG_LOCATION, 'w'))
-                print('Created %s' % (CONFIG_LOCATION))
+                print 'Created %s' % (CONFIG_LOCATION)
 
     def get(self, key):
         return self.config[key]

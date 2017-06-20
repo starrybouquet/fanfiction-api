@@ -5,7 +5,7 @@ import requests
 import subprocess
 import getpass
 import shutil
-from .config import Config
+from config import Config
 
 root = 'https://www.fanfiction.net'
 login_url = 'https://www.fanfiction.net/login.php'
@@ -18,7 +18,7 @@ def _solve_captcha(captcha_url):
         shutil.copyfileobj(response.raw, out)
     del response
     cap_viewer = subprocess.Popen(['display', '-monochrome', 'captcha.jpg'])
-    solution = input('Solve CAPTCHA: ')
+    solution = raw_input('Solve CAPTCHA: ')
     cap_viewer.terminate()
     cap_viewer.kill()
     return solution
@@ -34,10 +34,10 @@ class FFLogin(object):
         if reset:
             c.reset()
         if c.get('username') == None:
-            self.username = input("Enter fanfiction.net username: ")
+            self.username = raw_input("Enter fanfiction.net username: ")
             c.set_username(self.username)
         if c.get('email') == None:
-            self.email = input("Enter email used to register on fanfiction.net: ")
+            self.email = raw_input("Enter email used to register on fanfiction.net: ")
             c.set_email(self.email)
         if c.get('password') == None:
             self.password = getpass.getpass("Enter fanfiction.net password: ")
