@@ -1,5 +1,6 @@
 import re, requests, bs4, unicodedata
 from datetime import timedelta, date
+from time import time
 import ff
 # Constants
 root = 'https://www.fanfiction.net'
@@ -100,6 +101,7 @@ class Story(object):
 
         Attributes:
             id  (int):              The story id.
+            timestamp:              The timestamp of moment when data was consistent with site
             chapter_count (int);    The number of chapters.
             word_count (int):       The number of words.
             author_id (int):        The user id of the author.
@@ -109,23 +111,36 @@ class Story(object):
             author (str):           The name of the author.
             rated (str):            The story rating.
             language (str):         The story language.
-            genre (str):            The genre(s) of the story.
-            characters (str):       The character(s) of the story.
+            genre [str]:            The genre(s) of the story.
+            characters [str]:       The character(s) of the story.
             reviews (int):          The number of reviews of the story.
-            status (bool):          True if the story is complete, else False.
+            favs (int):             The number of user which has this story in favorite list
+            followers (int):        The number of users who follow the story
+            complete (bool):        True if the story is complete, else False.
         """
-
-        if url is None:
-            if id is None:
-                print("There must be a url or an id.")
+        self.id = id
+        if id is None:
+            if url is None:
+                raise ValueError("There must be a url or an id.")
             else:
-                url = _STORY_URL_TEMPLATE % int(id)
+                self.id = _parse_integer(_STORYID_REGEX, source)
 
+    def _init_int_value_from_token(self, tokens, prefix):
+        for token in tokens:
+            if token.startswith(prefix):
+                # Replace comma in case the number is greater than 9999
+                return int(token.split()[1].replace(',', ''))
+        # value wasn't found 
+        return 0
+
+
+    def download_data(self):
+        self.timestamp = time()
+        url = _STORY_URL_TEMPLATE % int(self.id)
         source = requests.get(url)
         source = source.text
         # Easily parsable and directly contained in the JavaScript, lets hope
         # that doesn't change or it turns into something like below
-        self.id = _parse_integer(_STORYID_REGEX, source)
         try:
             # if there is only 1 chapter
             self.date_updated = _parse_date(_DATEU_REGEX, source)
@@ -133,11 +148,15 @@ class Story(object):
         except AttributeError:
             self.chapter_count = 1
             self.date_updated = None
+
         self.word_count = _parse_integer(_WORDS_REGEX, source)
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
         self.date_published = _parse_date(_DATEP_REGEX, source)
         self.author = _unescape_javascript_string(_parse_string(_AUTHOR_REGEX, source))
+
+        if self.date_updated is None:
+            self.date_updated = self.date_published
 
         # Tokens of information that aren't directly contained in the
         # JavaScript, need to manually parse and filter those
@@ -150,44 +169,38 @@ class Story(object):
 
         # After those the remaining tokens are uninteresting and looking for
         # either character or genre tokens is useless
-        token_terminators = ['Reviews: ', 'Updated: ', 'Published: ']
+        token_terminators = ['Chapters: ', 'Words: ', 'Reviews: ', 'Favs: ', 'Follows: ', 'Updated: ', 'Published: ', 'id: ']
 
         # Check if tokens[2] contains the genre
         if tokens[2] in _GENRES or '/' in tokens[2] and all(token in _GENRES for token in tokens[2].split('/')):
-            self.genre = tokens[2]
+            self.genre = tokens[2].split('/')
             # tokens[2] contained the genre, check if next token contains the
             # characters
             if not any(tokens[3].startswith(terminator) for terminator in token_terminators):
-                self.characters = tokens[3]
+                self.characters = tokens[3].split(',')
             else:
                 # No characters token
-                self.characters = ''
+                self.characters = []
         elif any(tokens[2].startswith(terminator) for terminator in token_terminators):
             # No genre and/or character was specified
-            self.genre = ''
-            self.characters = ''
+            self.genre = []
+            self.characters = []
             # tokens[2] must contain the characters since it wasn't a genre
             # (check first clause) but isn't either of "Reviews: ", "Updated: "
             # or "Published: " (check previous clause)
         else:
-            self.characters = tokens[2]
+            self.characters = tokens[2].split(',')
 
-        for token in tokens:
-            if token.startswith('Reviews: '):
-                # Replace comma in case the review count is greater than 9999
-                self.reviews = int(token.split()[1].replace(',', ''))
-                break
-        else:
-            # "Reviews: " wasn't found and for-loop not broken, hence no (0)
-            # reviews
-            self.reviews = 0
+        self.reviews = self._init_int_value_from_token(tokens, 'Reviews: ')
+        self.favs = self._init_int_value_from_token(tokens, 'Favs: ')
+        self.followers = self._init_int_value_from_token(tokens, 'Follows: ')
 
-        # Status is directly contained in the tokens as a single-string
-        if 'Complete' in tokens:
-            self.status = True
+        # complete is directly contained in the tokens as a single-string
+        if 'Status: Complete' in tokens:
+            self.complete = True
         else:
             # FanFiction.Net calls it "In-Progress", I'll just go with that
-            self.status = False
+            self.complete = False
 
     def get_chapters(self):
         """
@@ -207,7 +220,7 @@ class Story(object):
         return User(id=self.author_id)
 
     def print_info(self, attrs=['title', 'id', 'author', 'author_id', 'chapter_count', 'word_count', 'date_published',
-                                'date_updated', 'rated', 'status', 'language', 'genre', 'characters', 'reviews']):
+                                'date_updated', 'rated', 'complete', 'language', 'genre', 'characters', 'reviews', 'favs', 'followers']):
         """
         Print information held about the story.
         :param attrs: A list of attribute names to print information for.
@@ -377,16 +390,17 @@ class Chapter(object):
 
 class User(object):
     def __init__(self, url=None, id=None):
-
         if url is None:
             if id is None:
-                print("Either url or id must be specified.")
+                raise ValueError("Either url or id must be specified.")
             else:
-                self.userid = id
-                url = _USERID_URL_TEMPLATE % id
+                self.id = id
         else:
-            self.userid = _parse_integer(_USERID_URL_EXTRACT, url)
+            self.id = _parse_integer(_USERID_URL_EXTRACT, url)
 
+    def download_data(self):
+        self.timestamp = time()
+        url = _USERID_URL_TEMPLATE % self.id
         source = requests.get(url)
         source = source.text
         self._soup = bs4.BeautifulSoup(source, 'html5lib')
@@ -398,12 +412,13 @@ class User(object):
             self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
         except AttributeError:
             self.favourite_author_count = None
+
     def get_stories(self):
         """
         Get the stories written by this author.
         :return: A generator for stories by this author.
         """
-        xml_page_source = requests.get(root + '/atom/u/%d/' % self.userid)
+        xml_page_source = requests.get(root + '/atom/u/%d/' % self.id)
         xml_page_source = xml_page_source.text
         xml_soup = bs4.BeautifulSoup(xml_page_source)
         entries = xml_soup.findAll('link', attrs={'rel': 'alternate'})
