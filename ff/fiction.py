@@ -1,5 +1,5 @@
 import re, requests, bs4, unicodedata
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 from time import time
 import ff
 # Constants
@@ -37,11 +37,10 @@ _REVIEW_TEXT_REGEX = r"<div[^>]*>([^<]*)<"
 
 # Used to parse the attributes which aren't directly contained in the
 # JavaScript and hence need to be parsed manually
-_NON_JAVASCRIPT_REGEX = r'Rated:(.+)'
+_NON_JAVASCRIPT_REGEX = r'Rated:(.+?)</div>'
 _HTML_TAG_REGEX = r'<.*?>'
 
 # Needed to properly decide if a token contains a genre or a character name
-# while manually parsing data that isn't directly contained in the JavaScript
 _GENRES = [
     'General', 'Romance', 'Humor', 'Drama', 'Poetry', 'Adventure', 'Mystery',
     'Horror', 'Parody', 'Angst', 'Supernatural', 'Suspense', 'Sci-Fi',
@@ -88,6 +87,30 @@ def _visible_filter(element):
         return False
     return True
 
+def _get_int_value_from_token(token, prefix):
+    if not token.startswith(prefix):
+        raise ValueError("int token doesn't starts with given prefix")
+    else:
+        return int(token[len(prefix):].replace(',', ''))
+
+def _get_date_value_from_token(token, prefix):
+    if not token.startswith(prefix):
+        raise ValueError("date token doesn't starts with given prefix")
+    else:
+        try:    
+            return datetime.strptime(token[len(prefix):], '%m/%d/%Y')
+        except ValueError:
+            return datetime.now()
+
+def _get_key_of_first_positive(f, d):
+    """
+    returns key k of first item in l for which f(k) == True
+    or None
+    """
+    for key, value in d.items():
+        if f(key) == True:
+            return key
+    return None
 
 class Story(object):
     def __init__(self, url=None, id=None):
@@ -102,13 +125,13 @@ class Story(object):
         Attributes:
             id  (int):              The story id.
             timestamp:              The timestamp of moment when data was consistent with site
+            fandoms [str]:           The fandoms to which the story belongs
             chapter_count (int);    The number of chapters.
             word_count (int):       The number of words.
             author_id (int):        The user id of the author.
             title (str):            The title of the story.
             date_published (date):  The date the story was published.
             date_updated (date):    The date of the most recent update.
-            author (str):           The name of the author.
             rated (str):            The story rating.
             language (str):         The story language.
             genre [str]:            The genre(s) of the story.
@@ -125,82 +148,108 @@ class Story(object):
             else:
                 self.id = _parse_integer(_STORYID_REGEX, source)
 
-    def _init_int_value_from_token(self, tokens, prefix):
-        for token in tokens:
-            if token.startswith(prefix):
-                # Replace comma in case the number is greater than 9999
-                return int(token.split()[1].replace(',', ''))
-        # value wasn't found 
-        return 0
-
-
     def download_data(self):
-        self.timestamp = time()
+        self.timestamp = datetime.now()
         url = _STORY_URL_TEMPLATE % int(self.id)
         source = requests.get(url)
         source = source.text
-        # Easily parsable and directly contained in the JavaScript, lets hope
-        # that doesn't change or it turns into something like below
-        try:
-            # if there is only 1 chapter
-            self.date_updated = _parse_date(_DATEU_REGEX, source)
-            self.chapter_count = _parse_integer(_CHAPTERS_REGEX, source)
-        except AttributeError:
-            self.chapter_count = 1
-            self.date_updated = None
+        self._soup = bs4.BeautifulSoup(source, 'html5lib')
 
-        self.word_count = _parse_integer(_WORDS_REGEX, source)
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
-        self.date_published = _parse_date(_DATEP_REGEX, source)
-        self.author = _unescape_javascript_string(_parse_string(_AUTHOR_REGEX, source))
+        print('download_data({})'.format(self.id))
+        fandom_chunk = self._soup.find('div', id='pre_story_links').find_all('a')[-1].get_text().replace('Crossover', '')
+        self.fandoms = [fandom.strip() for fandom in fandom_chunk.split('+')]
 
-        if self.date_updated is None:
-            self.date_updated = self.date_published
+        del self._soup
 
         # Tokens of information that aren't directly contained in the
         # JavaScript, need to manually parse and filter those
+        with open('source', 'w') as f:
+            f.write(source)
+        descr = re.search(_NON_JAVASCRIPT_REGEX, source.replace('\n', ' ')).group(0)
         tokens = [token.strip() for token in
-                  re.sub(_HTML_TAG_REGEX, '', _parse_string(_NON_JAVASCRIPT_REGEX, source)).split('-')]
+                  re.sub(_HTML_TAG_REGEX, '', descr).split('-')]
+        self._parse_description(tokens)
+
+    def _parse_description(self, tokens):
+        """
+        parse desription of story such as 'Rated: T - English - Humor/Adventure - Chapters: 2 - Words: 131,097 - Reviews: 537 - Favs: 2,515 - Follows: 2,207 - Updated: Jul 27, 2016 - Published: Dec 17, 2009 - Harry P.'
+        splitted into tokens list by '-' character
+        This functions fill all field of the self object except: id, author_id, title, fandoms, timestamp
+        """
+        #print('parse_descr({})'.format(tokens))
+        # skipping tokens 'Crossover' and token which contains fandoms
+        while not tokens[0].startswith('Rated:'):
+            tokens = tokens[1:]
 
         # Both tokens are constant and always available
-        self.rated = tokens[0].replace('Fiction', '').strip()
+        self.rated = tokens[0].replace('Rated:', '').replace('Fiction', '').strip()
         self.language = tokens[1]
 
-        # After those the remaining tokens are uninteresting and looking for
-        # either character or genre tokens is useless
-        token_terminators = ['Chapters: ', 'Words: ', 'Reviews: ', 'Favs: ', 'Follows: ', 'Updated: ', 'Published: ', 'id: ']
+        tokens = tokens[2:]
 
-        # Check if tokens[2] contains the genre
-        if tokens[2] in _GENRES or '/' in tokens[2] and all(token in _GENRES for token in tokens[2].split('/')):
-            self.genre = tokens[2].split('/')
-            # tokens[2] contained the genre, check if next token contains the
-            # characters
-            if not any(tokens[3].startswith(terminator) for terminator in token_terminators):
-                self.characters = tokens[3].split(',')
-            else:
-                # No characters token
-                self.characters = []
-        elif any(tokens[2].startswith(terminator) for terminator in token_terminators):
-            # No genre and/or character was specified
+        # there can be token with the list of genres
+        if tokens[0] in _GENRES or '/' in tokens[0] and all(token in _GENRES for token in tokens[0].split('/')):
+            self.genre = tokens[0].split('/')
+            tokens = tokens[1:]
+        else:
             self.genre = []
-            self.characters = []
-            # tokens[2] must contain the characters since it wasn't a genre
-            # (check first clause) but isn't either of "Reviews: ", "Updated: "
-            # or "Published: " (check previous clause)
-        else:
-            self.characters = tokens[2].split(',')
 
-        self.reviews = self._init_int_value_from_token(tokens, 'Reviews: ')
-        self.favs = self._init_int_value_from_token(tokens, 'Favs: ')
-        self.followers = self._init_int_value_from_token(tokens, 'Follows: ')
+        # deleting useless 'id: ...' token
+        if tokens[-1].startswith('id:'):
+            tokens = tokens[:-1]
 
-        # complete is directly contained in the tokens as a single-string
-        if 'Status: Complete' in tokens:
+        # and if story is complete the last token contain 'Complete'
+        if 'Complete' in tokens[-1]:
             self.complete = True
+            tokens = tokens[:-1]
         else:
-            # FanFiction.Net calls it "In-Progress", I'll just go with that
             self.complete = False
+
+        # except those there are 4 possible kind of tokens: tokens with int data, tokens with date data, story id token,
+        # and token with characters/pairings
+        int_tokens = {'Chapters: ': 'chapter_count', 'Words: ': 'word_count', 'Reviews: ': 'reviews', 
+                      'Favs: ': 'favs', 'Follows: ': 'followers'}
+        date_tokens = {'Updated: ': 'date_updated', 'Published: ': 'date_published'}
+
+        for token in tokens:
+            int_k = _get_key_of_first_positive(lambda s: token.startswith(s), int_tokens)
+            date_k = _get_key_of_first_positive(lambda s: token.startswith(s), date_tokens)
+            if int_k is not None:
+                setattr(self, int_tokens[int_k], _get_int_value_from_token(token, int_k)) 
+            elif date_k is not None:
+                setattr(self, date_tokens[date_k], _get_date_value_from_token(token, date_k))
+            else:
+                self.characters = [c.translate(str.maketrans('', '', '[]')).strip() for c in token.split(',')]
+
+        # now we have to fill field which could be left empty
+        if not hasattr(self, 'chapter_count'):
+            self.chapter_count = 1
+
+        for field in int_tokens.values():
+            if not hasattr(self, field):
+                setattr(self, field, 0)
+
+        if not hasattr(self, 'date_updated'):
+            self.date_updated = self.date_published
+
+        if not hasattr(self, 'characters'):
+            self.characters = []
+
+    def _parse_from_storylist_format(self, story_chunk):
+        """
+        Parse story from html chunk
+        """
+        self.timestamp = datetime.now()
+        self.fandoms = [s.strip() for s in story_chunk.get('data-category').split('&')]
+        self.title = story_chunk.get('data-title')
+
+        self.author_id = _parse_integer(_USERID_URL_EXTRACT, str(story_chunk))
+
+        descr = story_chunk.find('div', {'class': 'z-padtop2 xgray'}).get_text()
+        self._parse_description([token.strip() for token in descr.split('-')])
+        
 
     def get_chapters(self):
         """
@@ -219,8 +268,8 @@ class Story(object):
         """
         return User(id=self.author_id)
 
-    def print_info(self, attrs=['title', 'id', 'author', 'author_id', 'chapter_count', 'word_count', 'date_published',
-                                'date_updated', 'rated', 'complete', 'language', 'genre', 'characters', 'reviews', 'favs', 'followers']):
+    def print_info(self, attrs=['title', 'id', 'fandoms', 'author_id', 'chapter_count', 'word_count', 'date_published',
+                                'date_updated', 'rated', 'language', 'genre', 'characters', 'reviews', 'favs', 'followers', 'complete']):
         """
         Print information held about the story.
         :param attrs: A list of attribute names to print information for.
@@ -432,10 +481,10 @@ class User(object):
         :return: A Story generator for the favourite stories for this author.
         """
         favourite_stories = self._soup.findAll('div', {'class': 'favstories'})
-        for story in favourite_stories:
-            link = story.find('a', {'class': 'stitle'}).get('href')
-            link = root + link
-            yield Story(link)
+        for story_chunk in favourite_stories:
+            story = Story(id=story_chunk.get('data-storyid'))
+            story._parse_from_storylist_format(story_chunk)
+            yield story
 
     def get_favourite_authors(self):
         """
