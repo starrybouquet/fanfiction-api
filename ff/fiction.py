@@ -439,6 +439,20 @@ class Chapter(object):
 
 class User(object):
     def __init__(self, url=None, id=None):
+        """ A user page on fanfiction.net
+
+        :param url: The url of user profile.
+        :param id: The url of user profile.
+
+        Attributes:
+            id                     (int): User id
+            timestamp              (int): Timestamp of last update of downloaded profile
+            favorite_stories List(Story): The list of user favorite stories
+            username               (str): The username
+            story_count            (int): The number of stories written by user
+            favourite_count        (int): The number of stories favourited by user
+            favourite_author_count (int): The number of authors favourited by user
+        """
         if url is None:
             if id is None:
                 raise ValueError("Either url or id must be specified.")
@@ -455,12 +469,19 @@ class User(object):
         self._soup = bs4.BeautifulSoup(source, 'html5lib')
         self.url = url
         self.username = _parse_string(_USERNAME_REGEX, source)
-        self.story_count = _parse_integer(_USER_STORY_COUNT_REGEX, source)
-        self.favourite_count = _parse_integer(_USER_FAVOURITE_COUNT_REGEX, source)
+        try:
+            self.story_count = _parse_integer(_USER_STORY_COUNT_REGEX, source)
+        except AttributeError:
+            self.story_count = 0
+        try:
+            self.favourite_count = _parse_integer(_USER_FAVOURITE_COUNT_REGEX, source)
+        except AttributeError:
+            self.favourite_count = 0
         try:
             self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
         except AttributeError:
-            self.favourite_author_count = None
+            self.favourite_author_count = 0
+        self._set_favourite_stories()
 
     def get_stories(self):
         """
@@ -475,16 +496,16 @@ class User(object):
             story_url = entry.get('href')
             yield Story(story_url)
 
-    def get_favourite_stories(self):
-        """
-        Get the favourite stories of this author.
-        :return: A Story generator for the favourite stories for this author.
-        """
+    def _set_favourite_stories(self):
         favourite_stories = self._soup.findAll('div', {'class': 'favstories'})
+        self.favorite_stories = []
         for story_chunk in favourite_stories:
             story = Story(id=story_chunk.get('data-storyid'))
             story._parse_from_storylist_format(story_chunk)
-            yield story
+            self.favorite_stories.append(story)
+
+    def _clean_unparsed_data(self):
+        del self._soup
 
     def get_favourite_authors(self):
         """
