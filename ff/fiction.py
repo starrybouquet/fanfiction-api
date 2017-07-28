@@ -153,7 +153,7 @@ class Story(object):
         url = _STORY_URL_TEMPLATE % int(self.id)
         source = requests.get(url)
         source = source.text
-        self._soup = bs4.BeautifulSoup(source, 'html5lib')
+        self._soup = bs4.BeautifulSoup(source, 'html.parser')
 
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
@@ -404,7 +404,7 @@ class Chapter(object):
         self.number = _parse_integer(_CHAPTER_REGEX, source)
         self.story_text_id = _parse_integer(_STORYTEXTID_REGEX, source)
 
-        soup = bs4.BeautifulSoup(source, 'html5lib')
+        soup = bs4.BeautifulSoup(source, 'html.parser')
         select = soup.find('select', {'name': 'chapter'})
         if select:
             # There are multiple chapters available, use chapter's title
@@ -466,7 +466,7 @@ class User(object):
         url = _USERID_URL_TEMPLATE % self.id
         source = requests.get(url)
         source = source.text
-        self._soup = bs4.BeautifulSoup(source, 'html5lib')
+        self._soup = bs4.BeautifulSoup(source, 'html.parser')
         self.url = url
         self.username = _parse_string(_USERNAME_REGEX, source)
         try:
@@ -490,7 +490,7 @@ class User(object):
         """
         xml_page_source = requests.get(root + '/atom/u/%d/' % self.id)
         xml_page_source = xml_page_source.text
-        xml_soup = bs4.BeautifulSoup(xml_page_source)
+        xml_soup = bs4.BeautifulSoup(xml_page_source, 'html.parser')
         entries = xml_soup.findAll('link', attrs={'rel': 'alternate'})
         for entry in entries:
             story_url = entry.get('href')
