@@ -1,7 +1,7 @@
 import re, requests, bs4, unicodedata
 from datetime import timedelta, date, datetime
 from time import time
-import ff
+
 # Constants
 root = 'https://www.fanfiction.net'
 
@@ -87,20 +87,23 @@ def _visible_filter(element):
         return False
     return True
 
+
 def _get_int_value_from_token(token, prefix):
     if not token.startswith(prefix):
         raise ValueError("int token doesn't starts with given prefix")
     else:
         return int(token[len(prefix):].replace(',', ''))
 
+
 def _get_date_value_from_token(token, prefix):
     if not token.startswith(prefix):
         raise ValueError("date token doesn't starts with given prefix")
     else:
-        try:    
+        try:
             return datetime.strptime(token[len(prefix):], '%m/%d/%Y')
         except ValueError:
-            return datetime.now()
+            return datetime.today()
+
 
 def _get_key_of_first_positive(f, d):
     """
@@ -111,6 +114,7 @@ def _get_key_of_first_positive(f, d):
         if f(key) == True:
             return key
     return None
+
 
 class Story(object):
     def __init__(self, url=None, id=None):
@@ -124,8 +128,9 @@ class Story(object):
 
         Attributes:
             id  (int):              The story id.
+            description (str):      The text description of the story
             timestamp:              The timestamp of moment when data was consistent with site
-            fandoms [str]:           The fandoms to which the story belongs
+            fandoms [str]:          The fandoms to which the story belongs
             chapter_count (int);    The number of chapters.
             word_count (int):       The number of words.
             author_id (int):        The user id of the author.
@@ -142,43 +147,40 @@ class Story(object):
             complete (bool):        True if the story is complete, else False.
         """
         self.id = id
+        self.url = url
         if id is None:
             if url is None:
                 raise ValueError("There must be a url or an id.")
             else:
                 self.id = _parse_integer(_STORYID_REGEX, source)
+        else:
+            self.url = _STORY_URL_TEMPLATE % int(self.id)
 
     def download_data(self):
         self.timestamp = datetime.now()
-        url = _STORY_URL_TEMPLATE % int(self.id)
-        source = requests.get(url)
+        source = requests.get(self.url)
         source = source.text
-        self._soup = bs4.BeautifulSoup(source, 'html.parser')
+        soup = bs4.BeautifulSoup(source, 'html.parser')
 
         self.author_id = _parse_integer(_USERID_REGEX, source)
         self.title = _unescape_javascript_string(_parse_string(_TITLE_REGEX, source).replace('+', ' '))
-        print('download_data({})'.format(self.id))
-        fandom_chunk = self._soup.find('div', id='pre_story_links').find_all('a')[-1].get_text().replace('Crossover', '')
+        fandom_chunk = soup.find('div', id='pre_story_links').find_all('a')[-1].get_text().replace('Crossover', '')
         self.fandoms = [fandom.strip() for fandom in fandom_chunk.split('+')]
-
-        del self._soup
+        self.description = soup.find('div', {'style': 'margin-top:2px'}).get_text()
 
         # Tokens of information that aren't directly contained in the
         # JavaScript, need to manually parse and filter those
-        with open('source', 'w') as f:
-            f.write(source)
-        descr = re.search(_NON_JAVASCRIPT_REGEX, source.replace('\n', ' ')).group(0)
+        tags = re.search(_NON_JAVASCRIPT_REGEX, source.replace('\n', ' ')).group(0)
         tokens = [token.strip() for token in
-                  re.sub(_HTML_TAG_REGEX, '', descr).split('-')]
-        self._parse_description(tokens)
+                  re.sub(_HTML_TAG_REGEX, '', tags).split('-')]
+        self._parse_tags(tokens)
 
-    def _parse_description(self, tokens):
+    def _parse_tags(self, tokens):
         """
         parse desription of story such as 'Rated: T - English - Humor/Adventure - Chapters: 2 - Words: 131,097 - Reviews: 537 - Favs: 2,515 - Follows: 2,207 - Updated: Jul 27, 2016 - Published: Dec 17, 2009 - Harry P.'
         splitted into tokens list by '-' character
         This functions fill all field of the self object except: id, author_id, title, fandoms, timestamp
         """
-        #print('parse_descr({})'.format(tokens))
         # skipping tokens 'Crossover' and token which contains fandoms
         while not tokens[0].startswith('Rated:'):
             tokens = tokens[1:]
@@ -209,7 +211,7 @@ class Story(object):
 
         # except those there are 4 possible kind of tokens: tokens with int data, tokens with date data, story id token,
         # and token with characters/pairings
-        int_tokens = {'Chapters: ': 'chapter_count', 'Words: ': 'word_count', 'Reviews: ': 'reviews', 
+        int_tokens = {'Chapters: ': 'chapter_count', 'Words: ': 'word_count', 'Reviews: ': 'reviews',
                       'Favs: ': 'favs', 'Follows: ': 'followers'}
         date_tokens = {'Updated: ': 'date_updated', 'Published: ': 'date_published'}
 
@@ -217,7 +219,7 @@ class Story(object):
             int_k = _get_key_of_first_positive(lambda s: token.startswith(s), int_tokens)
             date_k = _get_key_of_first_positive(lambda s: token.startswith(s), date_tokens)
             if int_k is not None:
-                setattr(self, int_tokens[int_k], _get_int_value_from_token(token, int_k)) 
+                setattr(self, int_tokens[int_k], _get_int_value_from_token(token, int_k))
             elif date_k is not None:
                 setattr(self, date_tokens[date_k], _get_date_value_from_token(token, date_k))
             else:
@@ -237,30 +239,28 @@ class Story(object):
         if not hasattr(self, 'characters'):
             self.characters = []
 
-    def _parse_from_storylist_format(self, story_chunk):
+    def _parse_from_storylist_format(self, story_chunk, author_id):
         """
         Parse story from html chunk
         """
+        self.author_id = author_id
         self.timestamp = datetime.now()
         self.fandoms = [s.strip() for s in story_chunk.get('data-category').split('&')]
         self.title = story_chunk.get('data-title')
-
-        self.author_id = _parse_integer(_USERID_URL_EXTRACT, str(story_chunk))
-
-        descr = story_chunk.find('div', {'class': 'z-padtop2 xgray'}).get_text()
-        self._parse_description([token.strip() for token in descr.split('-')])
-        
+        self.description = str(story_chunk.find('div', {'class': 'z-indent z-padtop'}))
+        # save only parts between div tags
+        self.description = self.description[self.description.find('>') + 1:]
+        self.description = self.description[:self.description.find('<div', 4)]
+        tags = story_chunk.find('div', {'class': 'z-padtop2 xgray'}).get_text()
+        self._parse_tags([token.strip() for token in tags.split('-')])
 
     def get_chapters(self):
         """
         A generator for all chapters in the story.
         :return: A generator to fetch chapter objects.
         """
-        try:
-            for number in range(1, self.chapter_count + 1):
-                yield Chapter(story_id=self.id, chapter=number)
-        except KeyboardInterrupt:
-            print("!-- Stopped fetching chapters")
+        for number in range(1, self.chapter_count + 1):
+            yield Chapter(story_id=self.id, chapter=number)
 
     def get_user(self):
         """
@@ -268,7 +268,7 @@ class Story(object):
         """
         return User(id=self.author_id)
 
-    def print_info(self, attrs=['title', 'id', 'fandoms', 'author_id', 'chapter_count', 'word_count', 'date_published',
+    def print_info(self, attrs=['title', 'id', 'description', 'fandoms', 'author_id', 'chapter_count', 'word_count', 'date_published',
                                 'date_updated', 'rated', 'language', 'genre', 'characters', 'reviews', 'favs', 'followers', 'complete']):
         """
         Print information held about the story.
@@ -285,14 +285,10 @@ class Story(object):
         """
         return ReviewsGenerator(self.id)
 
-
-
-    def download(self, output='', message=True, ext=''):
-        ff.download(self, output=output, message=message, ext=ext)
-
     # Method alias which allows the user to treat the get_chapters method like
     # a normal property if no manual opener is to be specified.
     chapters = property(get_chapters)
+
 
 class ReviewsGenerator(object):
     """
@@ -300,7 +296,7 @@ class ReviewsGenerator(object):
     Attributes:
         base_url            (int):      storys review url without specified page number
         page_number         (int):      number of current review page
-        reviews_cache       List(str):  list of already downloaded  (and partially processed) reviews 
+        reviews_cache       List(str):  list of already downloaded  (and partially processed) reviews
         skip_reviews_number (int):      length of already processed review from review_cache
     """
     def __init__(self, story_id, chapter=0):
@@ -334,7 +330,6 @@ class ReviewsGenerator(object):
     def _downloadReviewPage(self, page_number):
         url = self.base_url + str(page_number) + '/'
         return requests.get(url).text
-
 
 
 class Review(object):
@@ -392,9 +387,9 @@ class Chapter(object):
 
         if url is None:
             if story_id is None:
-                print('A URL or story id must be entered.')
+                raise Exception('A URL or story id must be entered.')
             elif chapter is None:
-                print('Both a stroy id and chapter number must be provided')
+                raise Exception('Both a stroy id and chapter number must be provided')
             elif story_id and chapter:
                 url = _CHAPTER_URL_TEMPLATE % (story_id, chapter)
 
@@ -437,6 +432,7 @@ class Chapter(object):
         """
         return ReviewsGenerator(self.story_id, self.number)
 
+
 class User(object):
     def __init__(self, url=None, id=None):
         """ A user page on fanfiction.net
@@ -447,74 +443,48 @@ class User(object):
         Attributes:
             id                     (int): User id
             timestamp              (int): Timestamp of last update of downloaded profile
-            favorite_stories List(Story): The list of user favorite stories
-            username               (str): The username
-            story_count            (int): The number of stories written by user
-            favourite_count        (int): The number of stories favourited by user
-            favourite_author_count (int): The number of authors favourited by user
+            stories              [Story]: The list of stories written by user
+            favorite_stories     [Story]: The list of user favorite stories
+            username               (str):
         """
-        if url is None:
-            if id is None:
-                raise ValueError("Either url or id must be specified.")
+        self.id = id
+        self.url = url
+        if id is None:
+            if url is None:
+                raise ValueError("There must be a url or an id.")
             else:
-                self.id = id
+                self.id = _parse_integer(_USERID_URL_EXTRACT, url)
         else:
-            self.id = _parse_integer(_USERID_URL_EXTRACT, url)
+            self.url = _USERID_URL_TEMPLATE % int(self.id)
 
     def download_data(self):
-        self.timestamp = time()
-        url = _USERID_URL_TEMPLATE % self.id
-        source = requests.get(url)
+        self.timestamp = datetime.now()
+        source = requests.get(self.url)
         source = source.text
-        self._soup = bs4.BeautifulSoup(source, 'html.parser')
-        self.url = url
+        soup = bs4.BeautifulSoup(source, 'html.parser')
         self.username = _parse_string(_USERNAME_REGEX, source)
-        try:
-            self.story_count = _parse_integer(_USER_STORY_COUNT_REGEX, source)
-        except AttributeError:
-            self.story_count = 0
-        try:
-            self.favourite_count = _parse_integer(_USER_FAVOURITE_COUNT_REGEX, source)
-        except AttributeError:
-            self.favourite_count = 0
-        try:
-            self.favourite_author_count = _parse_integer(_USER_FAVOURITE_AUTHOR_COUNT_REGEX, source)
-        except AttributeError:
-            self.favourite_author_count = 0
-        self._set_favourite_stories()
+        self.stories = self._get_stories_from_profile(soup, fav_stories=False)
+        self.favorite_stories = self._get_stories_from_profile(soup, fav_stories=True)
+        self.favorite_authors = self._get_favorite_authors(soup)
 
-    def get_stories(self):
-        """
-        Get the stories written by this author.
-        :return: A generator for stories by this author.
-        """
-        xml_page_source = requests.get(root + '/atom/u/%d/' % self.id)
-        xml_page_source = xml_page_source.text
-        xml_soup = bs4.BeautifulSoup(xml_page_source, 'html.parser')
-        entries = xml_soup.findAll('link', attrs={'rel': 'alternate'})
-        for entry in entries:
-            story_url = entry.get('href')
-            yield Story(story_url)
-
-    def _set_favourite_stories(self):
-        favourite_stories = self._soup.findAll('div', {'class': 'favstories'})
-        self.favorite_stories = []
+    def _get_stories_from_profile(self, soup, fav_stories=True):
+        if fav_stories:
+            target_class = 'favstories'
+        else:
+            target_class = 'mystories'
+        favourite_stories = soup.findAll('div', {'class': target_class})
+        result = []
         for story_chunk in favourite_stories:
             story = Story(id=story_chunk.get('data-storyid'))
-            story._parse_from_storylist_format(story_chunk)
-            self.favorite_stories.append(story)
+            story._parse_from_storylist_format(story_chunk, self.id)
+            result.append(story)
+        return result
 
-    def _clean_unparsed_data(self):
-        del self._soup
-
-    def get_favourite_authors(self):
-        """
-        :return: User generator for the favourite authors of this user.
-        """
-        tables = self._soup.findAll('table')
-        table = tables[-1]
-        author_tags = table.findAll('a', href=re.compile(r".*/u/(\d+)/.*"))
-        for author_tag in author_tags:
-            author_url = author_tag.get('href')
-            author_url = root + author_url
-            yield User(author_url)
+    def _get_favorite_authors(self, soup):
+        result = []
+        for column in soup.findAll('td', {'style': 'line-height:150%'}):
+            for author_tag in column.findAll('a', href=re.compile(r".*/u/(\d+)/.*")):
+                author_url = author_tag.get('href')
+                author_url = root + author_url
+                result.append(User(author_url))
+        return result
