@@ -187,9 +187,9 @@ class Story(object):
         else:
             self.url = _STORY_URL_TEMPLATE % int(self.id)
 
-    def download_data(self):
+    def download_data(self, timeout=5):
         self.timestamp = datetime.now()
-        source = requests.get(self.url)
+        source = requests.get(self.url, timeout=timeout)
         source = source.text
         soup = bs4.BeautifulSoup(source, 'html.parser')
 
@@ -502,9 +502,9 @@ class User(object):
         else:
             self.url = _USERID_URL_TEMPLATE % int(self.id)
 
-    def download_data(self):
+    def download_data(self, timeout):
         self.timestamp = datetime.now()
-        source = requests.get(self.url)
+        source = requests.get(self.url, timeout=timeout)
         source = source.text
         soup = bs4.BeautifulSoup(source, 'html.parser')
         self.username = _parse_string(_USERNAME_REGEX, source)
