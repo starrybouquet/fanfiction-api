@@ -55,6 +55,8 @@ _USERID_URL_TEMPLATE = 'https://www.fanfiction.net/u/%d'
 
 _DATE_COMPARISON = date(1970, 1, 1)
 
+_DATE_FORMAT = '%Y%m%d'
+
 
 def _parse_string(regex, source):
     """Returns first group of matched regular expression as string."""
@@ -117,6 +119,34 @@ def _get_key_of_first_positive(f, d):
 
 
 class Story(object):
+    SERIALIZED_ATTRS = [
+        'title',
+        'id',
+        'timestamp',
+        'description',
+        'fandoms',
+        'author_id',
+        'chapter_count',
+        'word_count',
+        'date_published',
+        'date_updated',
+        'rated',
+        'language',
+        'genre',
+        'characters',
+        'reviews',
+        'favs',
+        'followers',
+        'complete'
+    ]
+
+    DATE_ATTRS = [
+        'timestamp',
+        'date_published',
+        'date_updated'
+    ]
+
+
     def __init__(self, url=None, id=None):
         """ A story on fanfiction.net
 
@@ -146,6 +176,7 @@ class Story(object):
             followers (int):        The number of users who follow the story
             complete (bool):        True if the story is complete, else False.
         """
+        self.inited = False
         self.id = id
         self.url = url
         if id is None:
@@ -174,6 +205,7 @@ class Story(object):
         tokens = [token.strip() for token in
                   re.sub(_HTML_TAG_REGEX, '', tags).split('-')]
         self._parse_tags(tokens)
+        self.inited = True
 
     def _parse_tags(self, tokens):
         """
@@ -253,6 +285,7 @@ class Story(object):
         self.description = self.description[:self.description.find('<div', 4)]
         tags = story_chunk.find('div', {'class': 'z-padtop2 xgray'}).get_text()
         self._parse_tags([token.strip() for token in tags.split('-')])
+        self.inited = True
 
     def get_chapters(self):
         """
@@ -268,13 +301,24 @@ class Story(object):
         """
         return User(id=self.author_id)
 
-    def print_info(self, attrs=['title', 'id', 'description', 'fandoms', 'author_id', 'chapter_count', 'word_count', 'date_published',
-                                'date_updated', 'rated', 'language', 'genre', 'characters', 'reviews', 'favs', 'followers', 'complete']):
+    def get_json(self, attrs=None):
+        result = {}
+        for attr in attrs or self.SERIALIZED_ATTRS:
+            if attr in self.DATE_ATTRS:
+                result[attr] = getattr(self, attr).strftime(_DATE_FORMAT)
+            else:
+                result[attr] = getattr(self, attr)
+        return result
+
+    def print_info(self, attrs=None):
         """
         Print information held about the story.
         :param attrs: A list of attribute names to print information for.
         :return: void
         """
+        assert self.inited
+        if not attrs:
+            attrs = self.SERIALIZED_ATTRS
         for attr in attrs:
             print("%12s\t%s" % (attr, getattr(self, attr)))
 
@@ -445,6 +489,7 @@ class User(object):
             timestamp              (int): Timestamp of last update of downloaded profile
             stories              [Story]: The list of stories written by user
             favorite_stories     [Story]: The list of user favorite stories
+            favorite_authors     [User]: The list of user favorite stories
             username               (str):
         """
         self.id = id
