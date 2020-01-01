@@ -502,7 +502,7 @@ class User(object):
         else:
             self.url = _USERID_URL_TEMPLATE % int(self.id)
 
-    def download_data(self, timeout):
+    def download_data(self, timeout=5):
         self.timestamp = datetime.now()
         source = requests.get(self.url, timeout=timeout)
         source = source.text
