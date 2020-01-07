@@ -18,7 +18,6 @@ _DATEU_REGEX = r"Updated:\s*<span.+?='(\d+)'>"
 
 # USER REGEX
 _USERID_REGEX = r"var\s+userid\s*=\s*(\d+);"
-_AUTHOR_REGEX = r"href='/u/\d+/(.+?)'"
 _USERID_URL_EXTRACT = r".*/u/(\d+)"
 _USERNAME_REGEX = r"<link rel=\"canonical\" href=\"//www.fanfiction.net/u/\d+/(.+)\">"
 _USER_STORY_COUNT_REGEX = r"My Stories\s*<span class=badge>(\d+)<"
@@ -186,6 +185,7 @@ class Story(object):
                 self.id = _parse_integer(_STORYID_REGEX, source)
         else:
             self.url = _STORY_URL_TEMPLATE % int(self.id)
+        self.id = int(self.id)
 
     def download_data(self, timeout=5):
         self.timestamp = datetime.now()
@@ -275,7 +275,10 @@ class Story(object):
         """
         Parse story from html chunk
         """
-        self.author_id = author_id
+        if author_id:
+            self.author_id = author_id
+        else:
+            self.author_id = _parse_integer(_USERID_URL_EXTRACT, str(story_chunk))
         self.timestamp = datetime.now()
         self.fandoms = [s.strip() for s in story_chunk.get('data-category').split('&')]
         self.title = story_chunk.get('data-title')
@@ -301,7 +304,7 @@ class Story(object):
         """
         return User(id=self.author_id)
 
-    def get_json(self, attrs=None):
+    def get_json_dump(self, attrs=None):
         result = {}
         for attr in attrs or self.SERIALIZED_ATTRS:
             if attr in self.DATE_ATTRS:
@@ -501,6 +504,7 @@ class User(object):
                 self.id = _parse_integer(_USERID_URL_EXTRACT, url)
         else:
             self.url = _USERID_URL_TEMPLATE % int(self.id)
+        self.id =  int(self.id)
 
     def download_data(self, timeout=5):
         self.timestamp = datetime.now()
@@ -512,6 +516,16 @@ class User(object):
         self.favorite_stories = self._get_stories_from_profile(soup, fav_stories=True)
         self.favorite_authors = self._get_favorite_authors(soup)
 
+    def get_json_dump(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.strftime(_DATE_FORMAT),
+            'username': self.username,
+            'stories': [story.id for story in self.stories],
+            'favorite_stories': [story.id for story in self.favorite_stories],
+            'favorite_authors': [user.id for user in self.favorite_authors]
+        }
+
     def _get_stories_from_profile(self, soup, fav_stories=True):
         if fav_stories:
             target_class = 'favstories'
@@ -521,7 +535,7 @@ class User(object):
         result = []
         for story_chunk in favourite_stories:
             story = Story(id=story_chunk.get('data-storyid'))
-            story._parse_from_storylist_format(story_chunk, self.id)
+            story._parse_from_storylist_format(story_chunk, author_id=None if fav_stories else self.id)
             result.append(story)
         return result
 
