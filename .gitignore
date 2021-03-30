@@ -6,3 +6,5 @@ captcha.jpg
 build/
 dist/
 fanfiction_api.egg-info
+
+examples/

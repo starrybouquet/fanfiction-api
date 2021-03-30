@@ -19,7 +19,8 @@ _DATEU_REGEX = r"Updated:\s*<span.+?='(\d+)'>"
 # USER REGEX
 _USERID_REGEX = r"var\s+userid\s*=\s*(\d+);"
 _USERID_URL_EXTRACT = r".*/u/(\d+)"
-_USERNAME_REGEX = r"<link rel=\"canonical\" href=\"//www.fanfiction.net/u/\d+/(.+)\">"
+# _USERNAME_REGEX = r"<link rel=\"canonical\" href=\"//www.fanfiction.net/u/\d+/(.+)\">"
+# _USERNAME_REGEX = r"<span style=\"font-weight:bold;letter-spacing:1px;font-size:18px;font-family:'Georgia','Times New Roman','Times', Sans-serif;\"> 
 _USER_STORY_COUNT_REGEX = r"My Stories\s*<span class=badge>(\d+)<"
 _USER_FAVOURITE_COUNT_REGEX = r"Favorite Stories\s*<span class=badge>(\d+)<"
 _USER_FAVOURITE_AUTHOR_COUNT_REGEX = r"Favorite Authors\s*<span class=badge>(\d+)<"
@@ -512,6 +513,7 @@ class User(object):
         source = source.text
         soup = bs4.BeautifulSoup(source, 'html.parser')
         self.username = _parse_string(_USERNAME_REGEX, source)
+        print(soup)
         self.stories = self._get_stories_from_profile(soup, fav_stories=False)
         self.favorite_stories = self._get_stories_from_profile(soup, fav_stories=True)
         self.favorite_authors = self._get_favorite_authors(soup)
